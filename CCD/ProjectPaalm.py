@@ -10,6 +10,51 @@ import Leap, sys
 from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
 
 
+
+#Listener for phaleangeal
+class PAListener(Leap.Listener) :
+
+    #On initilization of listener
+    def on_it(self, controller):
+        print "Initialized"
+
+    #On connect of listener to controller
+    def on_connect(self, controller):
+        print "Connected"
+
+    #On disconnect of the listener to the controller
+    def on_disconnect(self, controller):
+        print "Disconnected"
+    #On exit of listener
+    def on_exit(self, controller):
+        print "Exited"
+
+    #On Frame being read from the Leap Do something
+    def on_frame(self, controller):
+        #This is where we will do CCD
+
+        # Get the most recent frame
+        frame = controller.frame()
+
+
+
+    #CCD algorithm
+    def perform_ccd(frame):
+
+
+
+
+
+######################
+
+
+
+
+
+
+
+
+
 class SampleListener(Leap.Listener):
     def on_init(self, controller):
         print "Initialized"
