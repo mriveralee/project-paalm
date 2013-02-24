@@ -1,14 +1,15 @@
-################################################################################
-# Copyright (C) 2012-2013 Leap Motion, Inc. All rights reserved.               #
-# Leap Motion proprietary and confidential. Not for distribution.              #
-# Use subject to the terms of the Leap Motion SDK Agreement available at       #
-# https://developer.leapmotion.com/sdk_agreement, or another agreement         #
-# between Leap Motion and you, your company or other organization.             #
-################################################################################
-
-import Leap, sys, copy
+ #!/usr/bin/python
+# -*- coding: <encoding name> -*-
+import Leap, sys
 from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
 
+import string, math
+
+
+USE_MAYA = False
+
+if USE_MAYA :
+    import maya.cmds as cmds
 
 
 #Listener for phaleangeal
@@ -63,6 +64,8 @@ class PAListener(Leap.Listener):
                 indexDir = indexFinger.direction
                 indexLength = indexFinger.length
                 
+
+                print "Direction: " + str(indexDir) + " Length: " + str(indexLength)
                 ''' 
                  # The plan is to use the Direction of the finger vector to 
                  # create a point in Maya's 3D space from the rigged-finger 
@@ -75,18 +78,25 @@ class PAListener(Leap.Listener):
                 #Map the finger direction to maya
                 mayaDir = map_dir_to_maya(indexDir, mayaEffectorLength)
                 #Effector Base (knuckle) Position in Maya
-                #mayaEffectorBasePos = # {x,y,z}
+                mayaEffectorBasePos = Leap.Vector(0.0,0.0,0.0)
                 #The new tip location in maya
-                mTipPosition = get_maya_effector_tip_pos(mayaDir, mayaEffectorBasePos)
-                #print "Index Location: " + str(indexFinger.tip_position) + " Palm Position: " + str(palmPosition)
+                mEndTipPosition = get_maya_effector_tip_pos(mayaDir, mayaEffectorBasePos)
+                
+                if USE_MAYA:
+                    cmds.select("joint5")
+                    cmds.translate(mEndTipPosition.x, mEndTipPosition.y, mEndTipPosition.z)
+
+
+
+                print "End Tip Position: " + str(mEndTipPosition)
+
                 #NOW RUN CCD
-
-
-
 
     #CCD algorithm
     def perform_ccd(frame):
         print "ccd test"
+
+
 ######################
 
 #Gets the Effector Tip Position using a maya mapped Direction and the base(knuckle position)
@@ -100,7 +110,7 @@ def map_dir_to_maya(leapFingerDir, mayaEffectorLength) :
     #takes a normal vector in 3D space from the leap,
     #maps it to a vector in Maya's 3D space that is used to 
     #compute a new end effector position in maya
-    return mayaEffectorLength*leapFingerDir;
+    return leapFingerDir*mayaEffectorLength;
 
 
 
@@ -161,7 +171,7 @@ if __name__ == "__main__":
 ##################################################################
 ##################### SAMPLE EXAMPLE LISTENER ####################
 ##################################################################
-
+'''
 class SampleListener(Leap.Listener):
     def on_init(self, controller):
         print "Initialized"
@@ -271,3 +281,4 @@ class SampleListener(Leap.Listener):
 
         if state == Leap.Gesture.STATE_INVALID:
             return "STATE_INVALID"
+'''
