@@ -1,5 +1,5 @@
- #!/usr/bin/python
-# -*- coding: <encoding name> -*-
+#!/usr/bin/python
+# -*- coding: utf-8 -*- 
 import Leap, sys
 from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
 
