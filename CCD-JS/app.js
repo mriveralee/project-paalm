@@ -86,7 +86,10 @@ app.get('/coolRoute', function(req, res) {
   res.send("HELLO!");
 });
 
-
+//Leap Sample
+app.get('/sample', function(req, res) {
+  res.send('Sample.html');
+});
 
 
 
