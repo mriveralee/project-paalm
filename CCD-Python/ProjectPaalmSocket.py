@@ -1,15 +1,27 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*- 
+
+#In Maya run MEL command 
+#commandPort -name ":6001";
+
+
 import Leap, sys
 from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
 
 import string, math
 
+#Socket Information
+import socket
 
-USE_MAYA = True
+maya = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+maya.connect(('localhost', 6001))
+maya.send('sphere;')
 
-if USE_MAYA :
-    import maya.cmds as cmds
+
+# USE_MAYA = False
+
+# if USE_MAYA :
+#     import maya.cmds as cmds
 
 
 #Listener for phaleangeal
@@ -30,6 +42,7 @@ class PAListener(Leap.Listener):
         print "Disconnected"
     #On exit of listener
     def on_exit(self, controller):
+        maya.close()
         print "Exited"
 
     #On Frame being read from the Leap Do something
@@ -82,9 +95,14 @@ class PAListener(Leap.Listener):
                 #The new tip location in maya
                 mEndTipPosition = get_maya_effector_tip_pos(mayaDir, mayaEffectorBasePos)
                 
-                if USE_MAYA:
-                    cmds.select("joint5")
-                    cmds.translate(mEndTipPosition.x, mEndTipPosition.y, mEndTipPosition.z)
+                # if USE_MAYA:
+                #Select the joint
+                jointName = "joint5"
+                selectCMD = "select " + jointName + ";"
+                maya.send(selectCMD)
+                #Update the position of the joint
+                moveCMD = "move " + str(mEndTipPosition.x) + " " + str(mEndTipPosition.y) + " " + str(mEndTipPosition.z)+ ";"
+                maya.send(moveCMD)
 
 
 

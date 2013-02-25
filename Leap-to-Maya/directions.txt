@@ -1,0 +1,49 @@
+///////////////////////////////
+1) complied new _LeapPython.so using the compile instructions below
+2) moved  _LeapPython.so && Leap.py && Leap.pyc && libLeap.dylib into:
+	/Applications/Autodesk/maya2013/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6
+
+
+
+///////////////////////////////
+
+
+
+
+
+
+
+/////// COMPILE INSTRUCTUIONS
+
+
+After a couple of hours struggling, I managed to recompile the _LeapPython.so in order for it to work in Maya.
+(This is in OS X)
+These are the instructions:
+
+First, get in a folder the following files:
+Leap.h
+Leap.i
+LeapMath.h
+libLeap.dylib
+
+Then, using the latest version of swig (2.09 in my case), run the following command:
+swig -c++ -python -o Leapwrappython.cpp -interface _LeapPython Leap.i
+
+This will generate the following files:
+Leapwrappython.cpp
+Leapwrappython.h
+Leap.py
+
+Download the latest version of clang from llvm.org (3.2 in my case).
+
+Now, with this files and clang you can compile the .so that you need.
+In my case:
+clang++ -arch i386 -arch x8664 -I/Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/include/python2.6 -I/Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6 Leapwrap_python.cpp libLeap.dylib /Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/Python -shared -o _LeapPython.so
+
+In general, for any version of python, the syntax of the command is:
+
+clang++ -arch i386 -arch x8664 -I/<pathtopython>/Versions//include/python -I/<pathtopython>/Versions//lib/python Leapwrappython.cpp libLeap.dylib /<pathto_python>/Versions/Python -shared -o _LeapPython.so
+
+Replace version number with the python version number you wish, for example, 2.7, or 2.6
+
+I hope this helps! :D
