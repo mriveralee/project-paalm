@@ -182,12 +182,30 @@ import maya.OpenMaya as OpenMaya
 import maya.OpenMayaMPx as OpenMayaMPx
 import Leap, string, math
 
-#Target point of interest
-TP = [13.327005785798825, 5.933350084777719, 1.6255290651771213];
-TARGET_POINT = Leap.Vector(TP[0],TP[1], TP[2])
+#Target point of interest - initial conditions
+#TP = [13.327005785798825, 5.933350084777719, 1.6255290651771213];
+#TARGET_POINT = Leap.Vector(TP[0],TP[1], TP[2])
 
 #Joints and Positions of finger
 JOINTS = {
+   'joint1': {
+        'base-pos': Leap.Vector(0, 0, 0),
+        'pos': Leap.Vector(0, 0, 0),
+        'rot': Leap.Vector(0, 90, 0),
+        'name': 'palm'
+    },
+    'joint2': {
+        'base-pos': Leap.Vector(0, 0, -5),
+        'pos': Leap.Vector(0, 0, -5),
+        'rot': Leap.Vector(0, 0, 0),
+        'name': 'knuckle'
+    },
+    'joint3': {
+        'base-pos': Leap.Vector(0, 0, -10),
+        'pos': Leap.Vector(0, 0, -10),
+        'rot': Leap.Vector(0, 0, 0),
+        'name': 'mid-joint'
+    },
     'joint4': {
         'base-pos': Leap.Vector(0, 0, -15),
         'pos': Leap.Vector(0, 0, -15),
@@ -199,179 +217,23 @@ JOINTS = {
         'pos': Leap.Vector(0, 0, -20),
         'rot': Leap.Vector(0, 0, 0),
         'name': 'end-effector'
-    }
-   # 'joint1': {
-    #     'base-pos': Leap.Vector(0, 0, 0),
-    #     'pos': Leap.Vector(0, 0, 0),
-    #     'rot': Leap.Vector(0, 90, 0),
-    #     'name': 'palm'
-    # },
-    # 'joint2': {
-    #     'base-pos': Leap.Vector(0, 0, -5),
-    #     'pos': Leap.Vector(0, 0, -5),
-    #     'rot': Leap.Vector(0, 0, 0),
-    #     'name': 'knuckle'
-    # },
-    # 'joint3': {
-    #     'base-pos': Leap.Vector(0, 0, -10),
-    #     'pos': Leap.Vector(0, 0, -10),
-    #     'rot': Leap.Vector(0, 0, 0),
-    #     'name': 'mid-joint'
-    # }, 
-}
-
-
-
-#Initialize our positions from out Maya joint        
-def initializePositions():
-    for key in JOINTS:
-        print key
-        #Get position of joint
-        pos = pm.xform(key, query=True, t=True, ws=True) #//in an array [x,y,z]
-        JOINTS[key]['base-pos'] = Leap.Vector(pos[0], pos[1], pos[2])
-        JOINTS[key]['pos'] = Leap.Vector(pos[0], pos[1], pos[2])
-
-        #Get Rotate of joint
-        rot = pm.xform(key, query=True, rotation=True)   
-        JOINTS[key]['rot'] = Leap.Vector(rot[0], rot[1], rot[2])
-
-
-#CCD algorithm - with a targetPos
-def perform_ccd(self, targetTipPos):
-    print "ccd test"
-    effector = 'joint5'
-    effectorPos = JOINTS[effector]['pos']
-    error = effectorPos.distance_to(targetTipPos)
-    iterations = 10
-    while (error > 0.5 and iterations > 0):
-        i = 4
-        while (i > 3):
-            #Loop through each joint and update the joint positions
-            #Pe - position of the end effector 
-            pEnd = JOINTS[effector]['pos']
-
-            #Pc - distance between the joint position and end effector position
-            jointKey = 'joint'+str(i)
-            print 'jointKey: ' + jointKey
-            pBase = JOINTS[jointKey]['pos']
-
-            #pT - target position
-            pT = targetTipPos
-
-            #peToPc
-            pE_pC = (pEnd-pBase).normalized
-            pT_pC = (pT-pBase).normalized
-            #Angle of rotation
-            try:  
-                theta = math.acos(Leap.Vector.dot(pE_pC, pT_pC))
-            except ValueError, e:
-                print "Value error"
-                break
-
-            #Axis of Rotation
-            rAxis = Leap.Vector.cross(pE_pC, pT_pC)
-            #Get Rotation Matrix from Axis & Angle
-            rotMat = Leap.Matrix(rAxis, theta)
-            rMat = rotMat.to_array_3x3()
-
-            phi = math.atan2(rMat[6], rMat[7]) * Leap.RAD_TO_DEG
-            theta = math.acos(rMat[8]) * Leap.RAD_TO_DEG
-            psi = -1*math.atan2(rMat[2], rMat[5]) * Leap.RAD_TO_DEG
-
-            print str(phi) + " " + str(theta) + " " + str(psi) 
-            #Update pBase by rotating it
-            #pBase = rotMat.transform_point(pBase)
-            #JOINTS[jointKey]['pos'] = pBase
-            #Update the position of our end effector
-            #JOINTS[effector]['pos'] = rotMat.transform_point(pEnd)
-            
-            #Rotate the connecting joint
-            pm.xform(jointKey, ws=True, rotation=(phi, theta, psi));
-            #get the new coordinates of the effector tip position
-            newCoords = pm.xform(effector, query=True, t=True, ws=True)
-            print "Old Tip Pos: "
-            print JOINTS[effector]['pos']
-            JOINTS[effector]['pos'] = Leap.Vector(newCoords[0], newCoords[1], newCoords[2])
-            print "New Tip Pos: "
-            print JOINTS[effector]['pos']
-
-
-            # #Update rotation for with the current rot current
-            # for j in range(i, 4):
-            #     rotKey = 'joint' + str(j)
-            #     JOINTS[jointKey]['pos'] =  rotMat.transform_point(JOINTS[jointKey]['pos'])
-
-
-           # maya.rotate(jointKey, phi, theta, psi)
-            
-            #Move to next Joint
-            i -= 1
-        #Check error
-        effectorPos = JOINTS[effector]['pos']
-        error = effectorPos.distance_to(targetTipPos)
-        iterations -= 1
-    #Turn back on frame updates
-    #Update pos for each joint in maya
-    # for i in range(2, 5):
-    #     jointKey = 'joint' + str(i)
-    #     pos = JOINTS[jointKey]['pos']
-    #     maya.move(jointKey, pos.x, pos.y, pos.z)
-    # self.is_peforming_ccd = False
-    #time.sleep(1) 
-initializePositions()
-perform_ccd(TARGET_POINT) 
-
-
-''''
-#PASTED IN MAYA
-import pymel.all as pm
-import sys
-import maya.OpenMaya as OpenMaya
-import maya.OpenMayaMPx as OpenMayaMPx
-import Leap, string, math
-
-#Target point of interest
-TP = [13.327005785798825, 5.933350084777719, 1.6255290651771213];
-TARGET_POINT = Leap.Vector(TP[0],TP[1], TP[2])
-
-#Joints and Positions of finger
-JOINTS = {
-    'joint4': {
-        'base-pos': Leap.Vector(0, 0, -15),
-        'pos': Leap.Vector(0, 0, -15),
-        'rot': Leap.Vector(0, 0, 0),
-        'name': 'tip-joint'
     },
-    'joint5': {
-        'base-pos': Leap.Vector(0, 0, -20),
-        'pos': Leap.Vector(0, 0, -20),
-        'rot': Leap.Vector(0, 0, 0),
-        'name': 'end-effector'
+    'targetPoint': {
+        'base-pos': Leap.Vector(0,0,0),
+        'pos': Leap.Vector(0,0,0),
+        'rot': Leap.Vector(0,0,0),
+        'name': 'targetPoint'
     }
-   # 'joint1': {
-    #     'base-pos': Leap.Vector(0, 0, 0),
-    #     'pos': Leap.Vector(0, 0, 0),
-    #     'rot': Leap.Vector(0, 90, 0),
-    #     'name': 'palm'
-    # },
-    # 'joint2': {
-    #     'base-pos': Leap.Vector(0, 0, -5),
-    #     'pos': Leap.Vector(0, 0, -5),
-    #     'rot': Leap.Vector(0, 0, 0),
-    #     'name': 'knuckle'
-    # },
-    # 'joint3': {
-    #     'base-pos': Leap.Vector(0, 0, -10),
-    #     'pos': Leap.Vector(0, 0, -10),
-    #     'rot': Leap.Vector(0, 0, 0),
-    #     'name': 'mid-joint'
-    # }, 
 }
-
 
 
 #Initialize our positions from out Maya joint        
 def initializePositions():
+    #Get the Current Target Position
+    targetPosKey = 'targetPoint'
+    posX = pm.xform(targetPosKey, query=True, t=True, ws=True)
+    TARGET_POINT = Leap.Vector(posX[0], posX[1], posX[2])
+    #Joint Positions
     for key in JOINTS:
         print key
         #Get position of joint
@@ -379,98 +241,87 @@ def initializePositions():
         JOINTS[key]['base-pos'] = Leap.Vector(pos[0], pos[1], pos[2])
         JOINTS[key]['pos'] = Leap.Vector(pos[0], pos[1], pos[2])
 
-        #Get Rotate of joint
+        #Get Rotatation of joint
         rot = pm.xform(key, query=True, rotation=True)   
         JOINTS[key]['rot'] = Leap.Vector(rot[0], rot[1], rot[2])
 
 
 #CCD algorithm - with a targetPos
-def perform_ccd(self, targetTipPos):
-    print "ccd test"
+def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
+    initializePositions()
+    targetTipPos = JOINTS['targetPoint']['pos']
+    #print "ccd test"
+    # While distance from effector to target > threshold and numloops<max
+            #   Take current bone
+            #   Build vector V1 from bone pivot to effector
+            #   Build vector V2 from bone pivot to target
+            #   Get the angle between V1 and V2
+            #   Get the rotation direction
+            #   Apply a differential rotation to the current bone
+            #   If it is the base node then the new current bone is the last bone in the chain
+            #   Else the new current bone is the previous one in the chain
+            #End while
     effector = 'joint5'
-    effectorPos = JOINTS[effector]['pos']
-    error = effectorPos.distance_to(targetTipPos)
+    distance = (JOINTS[effector]['pos']).distance_to(targetTipPos)
+    threshold = 0.5
     iterations = 10
-    while (error > 0.5 and iterations > 0):
-        i = 4
-        while (i > 3):
-            #Loop through each joint and update the joint positions
-            #Pe - position of the end effector 
-            pEnd = JOINTS[effector]['pos']
+    jointNum = 4
+    while (distance > threshold and iterations > 0):
+        while (jointNum > 3 and distance > threshold):
+            #Current Joint & Position
+            jointKey = 'joint'+str(jointNum)
+            jointPos = JOINTS[jointKey]['pos']
+            #Tip Position
+            effectorPos = JOINTS[effector]['pos']
 
-            #Pc - distance between the joint position and end effector position
-            jointKey = 'joint'+str(i)
-            print 'jointKey: ' + jointKey
-            pBase = JOINTS[jointKey]['pos']
-
-            #pT - target position
-            pT = targetTipPos
-
-            #peToPc
-            pE_pC = (pEnd-pBase).normalized
-            pT_pC = (pT-pBase).normalized
-            #Angle of rotation
-            try:  
-                theta = math.acos(Leap.Vector.dot(pE_pC, pT_pC))
-            except ValueError, e:
-                print "Value error"
-                break
-
-            #Axis of Rotation
-            rAxis = Leap.Vector.cross(pE_pC, pT_pC)
-            #Get Rotation Matrix from Axis & Angle
-            rotMat = Leap.Matrix(rAxis, theta)
-            rMat = rotMat.to_array_3x3()
-
-            phi = math.atan2(rMat[6], rMat[7]) * Leap.RAD_TO_DEG
-            theta = math.acos(rMat[8]) * Leap.RAD_TO_DEG
-            psi = -1*math.atan2(rMat[2], rMat[5]) * Leap.RAD_TO_DEG
-
-            print str(phi) + " " + str(theta) + " " + str(psi) 
-            #Update pBase by rotating it
-            #pBase = rotMat.transform_point(pBase)
-            #JOINTS[jointKey]['pos'] = pBase
-            #Update the position of our end effector
-            #JOINTS[effector]['pos'] = rotMat.transform_point(pEnd)
+            #The Two Vectors of Interest
+            V1 = (effectorPos - jointPos).normalized
+            V2 = (targetTipPos - jointPos).normalized
             
-            #Rotate the connecting joint
-            pm.xform(jointKey, ws=True, rotation=(phi, theta, psi));
-            #get the new coordinates of the effector tip position
+            #Angle between the two vectors
+            #theta = acos(Leap.Vector.dot(V1, V2))
+            
+            #Get the rotation axis
+            #axis = Leap.Vector.cross(V1, V2)
+            
+            #Now get Euler angles from Maya
+            rot = pm.angleBetween( euler=True, v1=V1.to_float_array(), v2=V2.to_float_array()) 
+            
+            #Now we rotate about these angles on the current Joint
+            pm.xform(jointKey, ws=True, rotation=(rot[0], rot[1], rot[2]));
+            
+            #Update the coordinates of our tip position
             newCoords = pm.xform(effector, query=True, t=True, ws=True)
-            print "Old Tip Pos: "
-            print JOINTS[effector]['pos']
+            #print "Old Tip Pos: "
+            #print JOINTS[effector]['pos']
             JOINTS[effector]['pos'] = Leap.Vector(newCoords[0], newCoords[1], newCoords[2])
-            print "New Tip Pos: "
-            print JOINTS[effector]['pos']
+            #print "New Tip Pos: "
+            #print JOINTS[effector]['pos']
 
-
-            # #Update rotation for with the current rot current
-            # for j in range(i, 4):
-            #     rotKey = 'joint' + str(j)
-            #     JOINTS[jointKey]['pos'] =  rotMat.transform_point(JOINTS[jointKey]['pos'])
-
-
-           # maya.rotate(jointKey, phi, theta, psi)
+            #Move onto next joint in the chain
+            jointNum = jointNum - 1
+            #Update distance
+            #print "HERE!"
+            distance = (JOINTS[effector]['pos']).distance_to(targetTipPos)
             
-            #Move to next Joint
-            i -= 1
-        #Check error
-        effectorPos = JOINTS[effector]['pos']
-        error = effectorPos.distance_to(targetTipPos)
-        iterations -= 1
-    #Turn back on frame updates
-    #Update pos for each joint in maya
-    # for i in range(2, 5):
-    #     jointKey = 'joint' + str(i)
-    #     pos = JOINTS[jointKey]['pos']
-    #     maya.move(jointKey, pos.x, pos.y, pos.z)
-    # self.is_peforming_ccd = False
-    #time.sleep(1) 
-initializePositions()
-perform_ccd(TARGET_POINT) 
-''''
+            updatePositionsFromIndex(jointNum)
+            #initializePositions()
+        #Decrement Iteration
+        iterations = iterations - 1
+            
+def updatePositionsFromIndex(index):
+    #Joint Positions
+    while (index > 0):
+        jointKey = 'joint'+str(index)
+        #Get position of joint
+        pos = pm.xform(jointKey, query=True, t=True, ws=True) #//in an array [x,y,z]
+        JOINTS[jointKey]['base-pos'] = Leap.Vector(pos[0], pos[1], pos[2])
+        JOINTS[jointKey]['pos'] = Leap.Vector(pos[0], pos[1], pos[2])
+
+        #Get Rotatation of joint
+        rot = pm.xform(jointKey, query=True, rotation=True)   
+        JOINTS[jointKey]['rot'] = Leap.Vector(rot[0], rot[1], rot[2])
+        index -= 1
 
 
-
-
-
+perform_ccd() 
