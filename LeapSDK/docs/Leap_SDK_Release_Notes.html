@@ -3,13 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.9.1: http://docutils.sourceforge.net/" />
+<meta name="generator" content="Docutils 0.10: http://docutils.sourceforge.net/" />
 <title>Leap SDK Release Notes</title>
 <style type="text/css">
 
 /*
 :Author: David Goodger (goodger@python.org)
-:Id: $Id: html4css1.css 7434 2012-05-11 21:06:27Z milde $
+:Id: $Id$
 :Copyright: This stylesheet has been placed in the public domain.
 
 Default cascading style sheet for the HTML output of Docutils.
@@ -77,7 +77,7 @@ div.tip p.admonition-title {
 
 div.attention p.admonition-title, div.caution p.admonition-title,
 div.danger p.admonition-title, div.error p.admonition-title,
-div.warning p.admonition-title {
+div.warning p.admonition-title, .code .error {
   color: red ;
   font-weight: bold ;
   font-family: sans-serif }
@@ -253,13 +253,14 @@ pre.literal-block, pre.doctest-block, pre.math, pre.code {
   margin-left: 2em ;
   margin-right: 2em }
 
-pre.code .ln { /* line numbers */
-  color: grey;
-}
-
-.code {
-  background-color: #eeeeee
-}
+pre.code .ln { color: grey; } /* line numbers */
+pre.code, code { background-color: #eeeeee }
+pre.code .comment, code .comment { color: #5C6576 }
+pre.code .keyword, code .keyword { color: #3B0D06; font-weight: bold }
+pre.code .literal.string, code .literal.string { color: #0C5404 }
+pre.code .name.builtin, code .name.builtin { color: #352B84 }
+pre.code .deleted, code .deleted { background-color: #DEB0A1}
+pre.code .inserted, code .inserted { background-color: #A3D289}
 
 span.classifier {
   font-family: sans-serif ;
@@ -325,8 +326,7 @@ ul.auto-toc {
 <div class="document" id="leap-sdk-release-notes">
 <h1 class="title">Leap SDK Release Notes</h1>
 
-<p><em>Version 0.7.4</em></p>
-<p><strong>Breaking Change Alert</strong> Leap libraries for C#, Python, and Java have been renamed to remove the underscore characters. You will have to update your project configurations when updating to the 0.7.4 SDK. In addition, some selector signatures changed in Objective-C.</p>
+<p><em>Version 0.7.5</em></p>
 <div class="contents topic" id="topics">
 <p class="topic-title first">Topics:</p>
 <ul class="simple">
@@ -342,39 +342,31 @@ ul.auto-toc {
 <li><a class="reference internal" href="#troubleshooting" id="id10">Troubleshooting</a></li>
 <li><a class="reference internal" href="#known-issues" id="id11">Known issues</a></li>
 <li><a class="reference internal" href="#device-recalibration" id="id12">Device recalibration</a></li>
-<li><a class="reference internal" href="#reporting-bugs" id="id13">Reporting Bugs</a><ul>
+<li><a class="reference internal" href="#reporting-bugs" id="id13">Reporting bugs</a><ul>
 <li><a class="reference internal" href="#automatic-bug-reporting" id="id14">Automatic bug reporting</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#change-log" id="id15">Change log</a><ul>
-<li><a class="reference internal" href="#version-0-7-4" id="id16">Version 0.7.4</a></li>
-<li><a class="reference internal" href="#version-0-7-3" id="id17">Version 0.7.3</a></li>
-<li><a class="reference internal" href="#version-0-7-2" id="id18">Version 0.7.2</a></li>
-<li><a class="reference internal" href="#version-0-7-1" id="id19">Version 0.7.1</a></li>
-<li><a class="reference internal" href="#version-0-7-0" id="id20">Version 0.7.0</a></li>
-<li><a class="reference internal" href="#version-0-6-6" id="id21">Version 0.6.6</a></li>
-<li><a class="reference internal" href="#version-0-6-5" id="id22">Version 0.6.5</a></li>
-<li><a class="reference internal" href="#version-0-6-4" id="id23">Version 0.6.4</a></li>
-<li><a class="reference internal" href="#version-0-6-3" id="id24">Version 0.6.3</a></li>
-<li><a class="reference internal" href="#version-0-6-2" id="id25">Version 0.6.2</a></li>
-<li><a class="reference internal" href="#version-0-6-1" id="id26">Version 0.6.1</a></li>
-<li><a class="reference internal" href="#version-0-6-0" id="id27">Version 0.6.0</a></li>
+<li><a class="reference internal" href="#version-0-7-5" id="id16">Version 0.7.5</a></li>
+<li><a class="reference internal" href="#version-0-7-4" id="id17">Version 0.7.4</a></li>
+<li><a class="reference internal" href="#version-0-7-3" id="id18">Version 0.7.3</a></li>
+<li><a class="reference internal" href="#version-0-7-2" id="id19">Version 0.7.2</a></li>
+<li><a class="reference internal" href="#version-0-7-1" id="id20">Version 0.7.1</a></li>
+<li><a class="reference internal" href="#version-0-7-0" id="id21">Version 0.7.0</a></li>
+<li><a class="reference internal" href="#version-0-6-6" id="id22">Version 0.6.6</a></li>
+<li><a class="reference internal" href="#version-0-6-5" id="id23">Version 0.6.5</a></li>
+<li><a class="reference internal" href="#version-0-6-4" id="id24">Version 0.6.4</a></li>
+<li><a class="reference internal" href="#version-0-6-3" id="id25">Version 0.6.3</a></li>
+<li><a class="reference internal" href="#version-0-6-2" id="id26">Version 0.6.2</a></li>
+<li><a class="reference internal" href="#version-0-6-1" id="id27">Version 0.6.1</a></li>
+<li><a class="reference internal" href="#version-0-6-0" id="id28">Version 0.6.0</a></li>
 </ul>
 </li>
 </ul>
 </div>
 <div class="section" id="highlights">
 <h1><a class="toc-backref" href="#id1">Highlights</a></h1>
-<p>In the 0.7.4 release, we introduce an experimental API for Gestures, one of our most requested features!</p>
-<p>The following gestures are recognized and reported by the Leap:</p>
-<p>Circle -- a circular motion by a single finger or tool.
-Key Tap -- a downward tapping motion by a finger or tool.
-Screen Tap -- a horizontal tapping or pushing motion by a finger or tool.
-Swipe -- a linear movement by a finger or tool.</p>
-<p>The Leap reports gestures observed in a frame in the same way that it reports other motion tracking data like fingers and hands. For each gesture observed, the Leap adds a Gesture object to the frame. You can get these Gesture objects from the Frame gestures list. All of the sample code in the SDK samples folder has been updated to access and display gestures.</p>
-<p>Since Leap gestures are reported in the frame, they work a bit differently than event-based gestures you may be familiar with in UI frameworks. If you need event or observer-based gestures, you can create an event manager that processes the Leap Gesture objects each frame and dispatches the appropriate events to your application components, as needed.</p>
-<p>Since the Leap Gesture API is new, we ask that you try it out as soon as possible and let us know how well it works for your use cases. We plan to add additional gesture features in future releases.</p>
-<p>Note that gestures are not supported by the JavaScript client library or the WebSocket JSON output at this time. We will add support in a future release.</p>
+<p>In the 0.7.5 release, we add Gestures to the WebSocket's JSON output and the Leap JavaScript client library (available from <a class="reference external" href="https://github.com/leapmotion/leapjs">GitHub</a>).</p>
 </div>
 <div class="section" id="sdk-folder-contents">
 <h1><a class="toc-backref" href="#id2">SDK folder contents</a></h1>
@@ -438,7 +430,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </div>
 <div class="section" id="javascript-client-library">
 <h1><a class="toc-backref" href="#id8">JavaScript client library</a></h1>
-<p>The JavaScript client library, <tt class="docutils literal">leap.js</tt>, is open-source and distributed separately from the main Leap SDK. You can download <tt class="docutils literal">leap.js</tt> from  <a class="reference external" href="https://github.com/leapmotion/leapjs">https://github.com/leapmotion/leapjs</a>. We encourage community contributions to this library.</p>
+<p>The Leap JavaScript client library, <tt class="docutils literal">leap.js</tt>, is open-source and distributed separately from the main Leap SDK. You can download <tt class="docutils literal">leap.js</tt> from <a class="reference external" href="https://github.com/leapmotion/leapjs">GitHub</a>. We encourage community contributions to this library.</p>
 </div>
 <div class="section" id="developer-account-login">
 <h1><a class="toc-backref" href="#id9">Developer account login</a></h1>
@@ -463,8 +455,10 @@ Swipe -- a linear movement by a finger or tool.</p>
 <ul class="simple">
 <li>Computers with integrated graphics circuits may not display the 3D graphics in the Leap sample applications correctly. (The 3D objects in the samples appear as black silhouettes.) A workaround is to set your computer to use a discrete graphics card or chipset, if available.</li>
 <li>If you move the Leap from one USB port to another, you may need to restart the Leap application.</li>
+<li>After your computer wakes from sleep mode, you may have to exit and relaunch the Leap application to get tracking data.</li>
 <li>The Leap software may occasionally disconnect from client applications. If this occurs and does not reconnect soon after, close and restart the Leap software to restore hand tracking. On some computers, setting the device to the Low Resource operating mode can resolve these problems. Sometimes reseating the USB cable or using a different cable can resolve the problem. Please report these issues to <a class="reference external" href="https://developer.leapmotion.com">Leap Motion</a> with information about your hardware setup.</li>
-<li>Enabling or disabling gesture recognition will affect gesture recognition for all Leap-enabled applications, including the Leap Visualizer.</li>
+<li>Enabling gesture recognition can affect gesture recognition for all Leap-enabled applications. Your application will always receive gestures of the types that it enables, but may receive additional gestures types as well if another Leap application has enabled them.</li>
+<li>The JavaScript client library allows all gesture recognition to be enabled or disabled, but does not allow individual gesture types to be controlled as in the native client library.</li>
 </ul>
 </div>
 <div class="section" id="device-recalibration">
@@ -483,7 +477,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 <p>If problems persist after recalibrating your device, please contact <a class="reference external" href="https://developer.leapmotion.com">Leap Motion</a> so we can help you resolve the issue.</p>
 </div>
 <div class="section" id="reporting-bugs">
-<h1><a class="toc-backref" href="#id13">Reporting Bugs</a></h1>
+<h1><a class="toc-backref" href="#id13">Reporting bugs</a></h1>
 <p>If you experience problems with the Leap device, the Leap application, or the Leap SDK, please submit a bug report. You can submit reports on the <a class="reference external" href="https://developer.leapmotion.com">Leap Motion</a> Developer Portal or by using the Bug Report form of the Leap Application.</p>
 <p>To use the Bug Report form:</p>
 <ol class="arabic simple">
@@ -510,30 +504,38 @@ Swipe -- a linear movement by a finger or tool.</p>
 </div>
 <div class="section" id="change-log">
 <h1><a class="toc-backref" href="#id15">Change log</a></h1>
-<div class="section" id="version-0-7-4">
-<h2><a class="toc-backref" href="#id16">Version 0.7.4</a></h2>
+<div class="section" id="version-0-7-5">
+<h2><a class="toc-backref" href="#id16">Version 0.7.5</a></h2>
 <ul class="simple">
-<li>Removed  underscore characters from library names. <strong>Important</strong> This is a breaking change. You will have to update your project configurations when updating to the 0.7.4 SDK.</li>
-<li>Added early-stage Gesture API supporting circle, swipe, and two tap gestures. (Not supported in the JavaScript library or JSON yet.)</li>
-<li>Combined the Examples with the SDK so there is only one download package now.</li>
-<li>In Objective-C, added NSNotification support for the Leap events.</li>
-<li>In Objective-C, changed some method signatures to better conform to language conventions.</li>
-<li>Updated the sample code in the SDK to demonstrate the Gesture API.</li>
-<li>Updated the JavaScript sample, Sample.html, to use the <tt class="docutils literal">leap.js</tt> client library.</li>
-<li>Updated the recalibration utility to work with the latest Leap devices.</li>
+<li>Added gestures to the WebSocket JSON output and the JavaScript client library (available from <a class="reference external" href="https://github.com/leapmotion/leapjs">GitHub</a>).</li>
+<li>Added Mac retina display support for Leap application windows.</li>
+<li>Fixed very low framerate on certain computers when objects enter device field of view.</li>
+<li>Updated device firmware to version 13.</li>
+</ul>
+</div>
+<div class="section" id="version-0-7-4">
+<h2><a class="toc-backref" href="#id17">Version 0.7.4</a></h2>
+<ul class="simple">
+<li>Added an early-stage Gesture API supporting circle, swipe, and two tap gestures. (Not supported in the WebSocket JSON output or JavaScript client library until version 0.7.5.)</li>
 <li>Added Gesture visualization to the Visualizer application. Press &quot;O&quot; to turn gestures on and off.</li>
-<li>Added a GesturesDemo program with source code to the SDK Examples.</li>
+<li>Added a GesturesDemo particle field application with source code to the SDK examples.</li>
+<li>Updated the C++, C#, Java, Python, and Objective-C sample applications to demonstrate the Gesture API.</li>
+<li>Updated the JavaScript sample, <tt class="docutils literal">Sample.html</tt>, to use the <tt class="docutils literal">leap.js</tt> client library (available from <a class="reference external" href="https://github.com/leapmotion/leapjs">GitHub</a>).</li>
+<li>Updated the recalibration utility to work with revision 6.5 Leap devices.</li>
+<li>Combined the example applications with the SDK so there is only one download package.</li>
+<li>Removed underscore characters from library names. <strong>Important:</strong> This is a breaking change. You will have to update your project configurations when updating to version 0.7.4 of the SDK.</li>
+<li>Objective-C (Mac only): Added NSNotification support for Leap events and changed some method signatures to better conform to language conventions.</li>
 </ul>
 </div>
 <div class="section" id="version-0-7-3">
-<h2><a class="toc-backref" href="#id17">Version 0.7.3</a></h2>
+<h2><a class="toc-backref" href="#id18">Version 0.7.3</a></h2>
 <ul class="simple">
 <li>Added the Leap Device Recalibration utility to the Leap application.</li>
 <li>Updated device firmware to version 12.</li>
 </ul>
 </div>
 <div class="section" id="version-0-7-2">
-<h2><a class="toc-backref" href="#id18">Version 0.7.2</a></h2>
+<h2><a class="toc-backref" href="#id19">Version 0.7.2</a></h2>
 <ul class="simple">
 <li>Added a Report Bug command to the Leap application menu. This command opens a Bug Report form that allows you to more easily record diagnostics and submit them with bug reports to Leap Motion.</li>
 <li>Added an option to automatically send diagnostic information to Leap Motion when certain types of errors are encountered by the Leap. This option defaults to off, but we encourage you to turn it on to help us improve the Leap software.</li>
@@ -547,7 +549,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-7-1">
-<h2><a class="toc-backref" href="#id19">Version 0.7.1</a></h2>
+<h2><a class="toc-backref" href="#id20">Version 0.7.1</a></h2>
 <ul class="simple">
 <li>Added motion properties to <tt class="docutils literal">Hand</tt> and <tt class="docutils literal">Frame</tt> classes, which provide information about the translation, rotation, and scaling of a hand or all objects in a frame.</li>
 <li>Added <tt class="docutils literal">isConnected</tt> method to the to the <tt class="docutils literal">Controller</tt> class, allowing polling-based applications to know when a controller is connected to the Leap application and device.</li>
@@ -561,7 +563,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-7-0">
-<h2><a class="toc-backref" href="#id20">Version 0.7.0</a></h2>
+<h2><a class="toc-backref" href="#id21">Version 0.7.0</a></h2>
 <p><strong>Important:</strong> Version 0.7.0 contains several changes to the Leap API that are incompatible with previous versions. When updating from an earlier version, you will have to make code changes and recompile your applications. Applications compiled against earlier versions of the API will not work with version 0.7.0 of the Leap application. See the <a class="reference external" href="https://developer.leapmotion.com/articles/migrating-to-api-version-0-7-0">0.7.0 Migration Guide</a> for tips on updating your application code to work with version 0.7.0 of the Leap API.</p>
 <ul class="simple">
 <li>Added <tt class="docutils literal">LeapMath.h</tt> library containing <tt class="docutils literal">Vector</tt> and <tt class="docutils literal">Matrix</tt> struct definitions.</li>
@@ -593,7 +595,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-6-6">
-<h2><a class="toc-backref" href="#id21">Version 0.6.6</a></h2>
+<h2><a class="toc-backref" href="#id22">Version 0.6.6</a></h2>
 <ul class="simple">
 <li>Added preliminary JavaScript support: the Leap application provides a WebSocket server that sends tracking data as JSON messages.</li>
 <li>Added ability to save Leap application settings between sessions.</li>
@@ -602,7 +604,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-6-5">
-<h2><a class="toc-backref" href="#id22">Version 0.6.5</a></h2>
+<h2><a class="toc-backref" href="#id23">Version 0.6.5</a></h2>
 <ul class="simple">
 <li>Added <tt class="docutils literal">Leapd.lib</tt> and <tt class="docutils literal">Leapd.dll</tt> for Visual Studio debug build configurations.</li>
 <li>Added <tt class="docutils literal">com.leapmotion.leap</tt> package to the Java library.</li>
@@ -614,7 +616,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-6-4">
-<h2><a class="toc-backref" href="#id23">Version 0.6.4</a></h2>
+<h2><a class="toc-backref" href="#id24">Version 0.6.4</a></h2>
 <ul class="simple">
 <li>Added the <tt class="docutils literal"><span class="pre">Leap::Ball</span></tt> class to represent the position and radius of a sphere.</li>
 <li>Added the following member functions to the <tt class="docutils literal"><span class="pre">Leap::Hand</span></tt> class:<ul>
@@ -645,7 +647,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-6-3">
-<h2><a class="toc-backref" href="#id24">Version 0.6.3</a></h2>
+<h2><a class="toc-backref" href="#id25">Version 0.6.3</a></h2>
 <ul class="simple">
 <li>Added robust lighting mode to permit operation in bright environments.</li>
 <li>Added low resource mode to permit operation on slower computers.</li>
@@ -655,7 +657,7 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-6-2">
-<h2><a class="toc-backref" href="#id25">Version 0.6.2</a></h2>
+<h2><a class="toc-backref" href="#id26">Version 0.6.2</a></h2>
 <ul class="simple">
 <li>Improved stability of C# sample application.</li>
 <li>Added support for C# development on Mac with Mono.</li>
@@ -663,13 +665,13 @@ Swipe -- a linear movement by a finger or tool.</p>
 </ul>
 </div>
 <div class="section" id="version-0-6-1">
-<h2><a class="toc-backref" href="#id26">Version 0.6.1</a></h2>
+<h2><a class="toc-backref" href="#id27">Version 0.6.1</a></h2>
 <ul class="simple">
 <li>Improved stability when switching quality mode.</li>
 </ul>
 </div>
 <div class="section" id="version-0-6-0">
-<h2><a class="toc-backref" href="#id27">Version 0.6.0</a></h2>
+<h2><a class="toc-backref" href="#id28">Version 0.6.0</a></h2>
 <ul class="simple">
 <li>Initial developer beta release of Leap software and SDK.</li>
 </ul>

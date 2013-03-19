@@ -24,7 +24,7 @@
   <td id="projectlogo"><img alt="Logo" src="leapmotion-logo.png"/></td>
   <td style="padding-left: 0.5em;">
    <div id="projectname">Leap API Reference
-   &#160;<span id="projectnumber">0.7.4</span>
+   &#160;<span id="projectnumber">0.7.5</span>
    </div>
   </td>
  </tr>
@@ -65,16 +65,18 @@ $(document).ready(function(){initNavTree('class_leap_1_1_config.html','');});
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:aee9819af7eacacc324aa72619310a9d8"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8">ValueType</a> { , <br/>
-&#160;&#160;<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a592e8eabddb7d95b192fee923c423760">TYPE_BOOLEAN</a>, 
+<tr class="memitem:aee9819af7eacacc324aa72619310a9d8"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8">ValueType</a> { <br/>
+&#160;&#160;<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a61027e87139ecf1153e7b7f41fd9adfa">TYPE_UNKNOWN</a>, 
+<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a592e8eabddb7d95b192fee923c423760">TYPE_BOOLEAN</a>, 
 <a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8af552faf6063e26e0b5a995c344cfaebd">TYPE_INT32</a>, 
 <a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a89c5f3cd61577ef00e08e9e3e4c67b30">TYPE_INT64</a>, 
-<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a2e047b2d7854da2901fca9f5131feaa4">TYPE_UINT32</a>, 
 <br/>
-&#160;&#160;<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a726e59c1fa671c4cb2252622e8be1df8">TYPE_UINT64</a>, 
+&#160;&#160;<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a2e047b2d7854da2901fca9f5131feaa4">TYPE_UINT32</a>, 
+<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a726e59c1fa671c4cb2252622e8be1df8">TYPE_UINT64</a>, 
 <a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a85ccbf5a55972697b350b394f7d87cfa">TYPE_FLOAT</a>, 
 <a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a864fb5b733d33e37e4f02e6f5ce52a4e">TYPE_DOUBLE</a>, 
-<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a312ad72cfe51163b2817732f7530e04e">TYPE_STRING</a>
+<br/>
+&#160;&#160;<a class="el" href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8a312ad72cfe51163b2817732f7530e04e">TYPE_STRING</a>
 <br/>
  }</td></tr>
 <tr class="memdesc:aee9819af7eacacc324aa72619310a9d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumerates the possible data types for configuration values.  <a href="class_leap_1_1_config.html#aee9819af7eacacc324aa72619310a9d8">More...</a><br/></td></tr>
@@ -157,29 +159,31 @@ Public Member Functions</h2></td></tr>
 <p>Enumerates the possible data types for configuration values. </p>
 <p>The <a class="el" href="class_leap_1_1_config.html#aa108cb602624a77f57a3689b55065608" title="Reports the natural data type for the value related to the specified key.">Config::type()</a> function returns an item from the ValueType enumeration. </p>
 <dl><dt><b>Enumerator: </b></dt><dd><table border="0" cellspacing="2" cellpadding="0">
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a592e8eabddb7d95b192fee923c423760"></a>TYPE_BOOLEAN</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a61027e87139ecf1153e7b7f41fd9adfa"></a>TYPE_UNKNOWN</em>&nbsp;</td><td>
 <p>The data type is unknown. </p>
 </td></tr>
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8af552faf6063e26e0b5a995c344cfaebd"></a>TYPE_INT32</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a592e8eabddb7d95b192fee923c423760"></a>TYPE_BOOLEAN</em>&nbsp;</td><td>
 <p>A boolean value. </p>
 </td></tr>
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a89c5f3cd61577ef00e08e9e3e4c67b30"></a>TYPE_INT64</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8af552faf6063e26e0b5a995c344cfaebd"></a>TYPE_INT32</em>&nbsp;</td><td>
 <p>A 32-bit integer. </p>
 </td></tr>
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a2e047b2d7854da2901fca9f5131feaa4"></a>TYPE_UINT32</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a89c5f3cd61577ef00e08e9e3e4c67b30"></a>TYPE_INT64</em>&nbsp;</td><td>
 <p>A 64-bit integer. </p>
 </td></tr>
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a726e59c1fa671c4cb2252622e8be1df8"></a>TYPE_UINT64</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a2e047b2d7854da2901fca9f5131feaa4"></a>TYPE_UINT32</em>&nbsp;</td><td>
 <p>A 32-bit unsigned integer. </p>
 </td></tr>
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a85ccbf5a55972697b350b394f7d87cfa"></a>TYPE_FLOAT</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a726e59c1fa671c4cb2252622e8be1df8"></a>TYPE_UINT64</em>&nbsp;</td><td>
 <p>A 64-bit unsigned integer. </p>
 </td></tr>
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a864fb5b733d33e37e4f02e6f5ce52a4e"></a>TYPE_DOUBLE</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a85ccbf5a55972697b350b394f7d87cfa"></a>TYPE_FLOAT</em>&nbsp;</td><td>
 <p>A floating-point number. </p>
 </td></tr>
-<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a312ad72cfe51163b2817732f7530e04e"></a>TYPE_STRING</em>&nbsp;</td><td>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a864fb5b733d33e37e4f02e6f5ce52a4e"></a>TYPE_DOUBLE</em>&nbsp;</td><td>
 <p>A double precision floating-point number. </p>
+</td></tr>
+<tr><td valign="top"><em><a class="anchor" id="aee9819af7eacacc324aa72619310a9d8a312ad72cfe51163b2817732f7530e04e"></a>TYPE_STRING</em>&nbsp;</td><td>
 <p>A string of characters. </p>
 </td></tr>
 </table>

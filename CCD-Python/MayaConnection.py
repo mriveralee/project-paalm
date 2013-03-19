@@ -8,6 +8,8 @@ import socket
 #In Maya run MEL command 
 #commandPort -pre trs -n ":9100";
 #commandPort -name ":6001"; -> Send Port
+
+
 #commandPort -n ":6002";  -> Receive Poort
 
 #Use Leap for vectors

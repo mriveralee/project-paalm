@@ -89,55 +89,55 @@
               [direction pitch] * LEAP_RAD_TO_DEG,
               [normal roll] * LEAP_RAD_TO_DEG,
               [direction yaw] * LEAP_RAD_TO_DEG);
+    }
 
-        NSArray *gestures = [frame gestures:nil];
-        for (int g = 0; g < [gestures count]; g++) {
-            LeapGesture *gesture = [gestures objectAtIndex:g];
-            switch (gesture.type) {
-                case LEAP_GESTURE_TYPE_CIRCLE: {
-                    LeapCircleGesture *circleGesture = (LeapCircleGesture *)gesture;
-                    // Calculate the angle swept since the last frame
-                    float sweptAngle = 0;
-                    if(circleGesture.state != LEAP_GESTURE_STATE_START) {
-                        LeapCircleGesture *previousUpdate = (LeapCircleGesture *)[[aController frame:1] gesture:gesture.id];
-                        sweptAngle = (circleGesture.progress - previousUpdate.progress) * 2 * LEAP_PI;
-                    }
-                    
-                    NSLog(@"Circle id: %d, %@, progress: %f, radius %f, angle: %f degrees",
-                          circleGesture.id, [Sample stringForState:gesture.state],
-                          circleGesture.progress, circleGesture.radius, sweptAngle * LEAP_RAD_TO_DEG);
-                    break;
+    NSArray *gestures = [frame gestures:nil];
+    for (int g = 0; g < [gestures count]; g++) {
+        LeapGesture *gesture = [gestures objectAtIndex:g];
+        switch (gesture.type) {
+            case LEAP_GESTURE_TYPE_CIRCLE: {
+                LeapCircleGesture *circleGesture = (LeapCircleGesture *)gesture;
+                // Calculate the angle swept since the last frame
+                float sweptAngle = 0;
+                if(circleGesture.state != LEAP_GESTURE_STATE_START) {
+                    LeapCircleGesture *previousUpdate = (LeapCircleGesture *)[[aController frame:1] gesture:gesture.id];
+                    sweptAngle = (circleGesture.progress - previousUpdate.progress) * 2 * LEAP_PI;
                 }
-                case LEAP_GESTURE_TYPE_SWIPE: {
-                    LeapSwipeGesture *swipeGesture = (LeapSwipeGesture *)gesture;
-                    NSLog(@"Swipe id: %d, %@, position: %@, direction: %@, speed: %f",
-                          swipeGesture.id, [Sample stringForState:swipeGesture.state],
-                          swipeGesture.position, swipeGesture.direction, swipeGesture.speed);
-                    break;
-                }
-                case LEAP_GESTURE_TYPE_KEY_TAP: {
-                    LeapKeyTapGesture *keyTapGesture = (LeapKeyTapGesture *)gesture;
-                    NSLog(@"Key Tap id: %d, %@, position: %@, direction: %@",
-                          keyTapGesture.id, [Sample stringForState:keyTapGesture.state],
-                          keyTapGesture.position, keyTapGesture.direction);
-                    break;
-                }
-                case LEAP_GESTURE_TYPE_SCREEN_TAP: {
-                    LeapScreenTapGesture *screenTapGesture = (LeapScreenTapGesture *)gesture;
-                    NSLog(@"Screen Tap id: %d, %@, position: %@, direction: %@",
-                          screenTapGesture.id, [Sample stringForState:screenTapGesture.state],
-                          screenTapGesture.position, screenTapGesture.direction);
-                    break;
-                }
-                default:
-                    NSLog(@"Unknown gesture type");
-                    break;
+
+                NSLog(@"Circle id: %d, %@, progress: %f, radius %f, angle: %f degrees",
+                      circleGesture.id, [Sample stringForState:gesture.state],
+                      circleGesture.progress, circleGesture.radius, sweptAngle * LEAP_RAD_TO_DEG);
+                break;
             }
+            case LEAP_GESTURE_TYPE_SWIPE: {
+                LeapSwipeGesture *swipeGesture = (LeapSwipeGesture *)gesture;
+                NSLog(@"Swipe id: %d, %@, position: %@, direction: %@, speed: %f",
+                      swipeGesture.id, [Sample stringForState:swipeGesture.state],
+                      swipeGesture.position, swipeGesture.direction, swipeGesture.speed);
+                break;
+            }
+            case LEAP_GESTURE_TYPE_KEY_TAP: {
+                LeapKeyTapGesture *keyTapGesture = (LeapKeyTapGesture *)gesture;
+                NSLog(@"Key Tap id: %d, %@, position: %@, direction: %@",
+                      keyTapGesture.id, [Sample stringForState:keyTapGesture.state],
+                      keyTapGesture.position, keyTapGesture.direction);
+                break;
+            }
+            case LEAP_GESTURE_TYPE_SCREEN_TAP: {
+                LeapScreenTapGesture *screenTapGesture = (LeapScreenTapGesture *)gesture;
+                NSLog(@"Screen Tap id: %d, %@, position: %@, direction: %@",
+                      screenTapGesture.id, [Sample stringForState:screenTapGesture.state],
+                      screenTapGesture.position, screenTapGesture.direction);
+                break;
+            }
+            default:
+                NSLog(@"Unknown gesture type");
+                break;
         }
+    }
 
-        if (([[frame hands] count] > 0) || [[frame gestures:nil] count] > 0) {
-            NSLog(@" ");
-        }
+    if (([[frame hands] count] > 0) || [[frame gestures:nil] count] > 0) {
+        NSLog(@" ");
     }
 }
 

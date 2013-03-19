@@ -24,7 +24,7 @@
   <td id="projectlogo"><img alt="Logo" src="leapmotion-logo.png"/></td>
   <td style="padding-left: 0.5em;">
    <div id="projectname">Leap API Reference
-   &#160;<span id="projectnumber">0.7.4</span>
+   &#160;<span id="projectnumber">0.7.5</span>
    </div>
   </td>
  </tr>
@@ -66,7 +66,7 @@ $(document).ready(function(){initNavTree('class_leap_1_1_key_tap_gesture.html','
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:aed8b71565f409919d24aac4e231df7c8"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_leap_1_1_vector.html">Vector</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_key_tap_gesture.html#aed8b71565f409919d24aac4e231df7c8">direction</a> () const </td></tr>
-<tr class="memdesc:aed8b71565f409919d24aac4e231df7c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">The current direction of finger tip motion.  <a href="#aed8b71565f409919d24aac4e231df7c8"></a><br/></td></tr>
+<tr class="memdesc:aed8b71565f409919d24aac4e231df7c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">The direction of finger tip motion.  <a href="#aed8b71565f409919d24aac4e231df7c8"></a><br/></td></tr>
 <tr class="separator:aed8b71565f409919d24aac4e231df7c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9505eb03eeb41fb46ebe0d32ed648a98"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_key_tap_gesture.html#a9505eb03eeb41fb46ebe0d32ed648a98">KeyTapGesture</a> ()</td></tr>
 <tr class="memdesc:a9505eb03eeb41fb46ebe0d32ed648a98"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a new <a class="el" href="class_leap_1_1_key_tap_gesture.html" title="The KeyTapGesture class represents a tapping gesture by a finger or tool.">KeyTapGesture</a> object.  <a href="#a9505eb03eeb41fb46ebe0d32ed648a98"></a><br/></td></tr>
@@ -140,10 +140,22 @@ Static Public Member Functions</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="inherited"></a>
 Additional Inherited Members</h2></td></tr>
 <tr class="inherit_header pub_types_class_leap_1_1_gesture"><td colspan="2" onclick="javascript:toggleInherit('pub_types_class_leap_1_1_gesture')"><img src="closed.png" alt="-"/>&#160;Public Types inherited from <a class="el" href="class_leap_1_1_gesture.html">Leap::Gesture</a></td></tr>
-<tr class="memitem:a068c6f3ba05970dc557b62a366073578 inherit pub_types_class_leap_1_1_gesture"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_gesture.html#a068c6f3ba05970dc557b62a366073578">State</a> </td></tr>
+<tr class="memitem:a068c6f3ba05970dc557b62a366073578 inherit pub_types_class_leap_1_1_gesture"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_gesture.html#a068c6f3ba05970dc557b62a366073578">State</a> { <a class="el" href="class_leap_1_1_gesture.html#a068c6f3ba05970dc557b62a366073578a6a15c3a18402c69bd711b58e6dea5d93">STATE_INVALID</a> = -1, 
+<a class="el" href="class_leap_1_1_gesture.html#a068c6f3ba05970dc557b62a366073578aae7d6cacedcd2850cdea7d9f2dfd33a4">STATE_START</a> = 1, 
+<a class="el" href="class_leap_1_1_gesture.html#a068c6f3ba05970dc557b62a366073578ac8600576e553a806c9c4a337e5cee473">STATE_UPDATE</a> = 2, 
+<a class="el" href="class_leap_1_1_gesture.html#a068c6f3ba05970dc557b62a366073578a4cfb4482ef179e4527c15188328b894f">STATE_STOP</a> = 3
+ }</td></tr>
 <tr class="memdesc:a068c6f3ba05970dc557b62a366073578"><td class="mdescLeft">&#160;</td><td class="mdescRight">The possible gesture states.  <a href="class_leap_1_1_gesture.html#a068c6f3ba05970dc557b62a366073578">More...</a><br/></td></tr>
 <tr class="separator:a068c6f3ba05970dc557b62a366073578 inherit pub_types_class_leap_1_1_gesture"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6fa6dd4f28c502f0d55abc6b71c6f9b1 inherit pub_types_class_leap_1_1_gesture"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1">Type</a> </td></tr>
+<tr class="memitem:a6fa6dd4f28c502f0d55abc6b71c6f9b1 inherit pub_types_class_leap_1_1_gesture"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1">Type</a> { <br/>
+&#160;&#160;<a class="el" href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1a743fdf6ff0a893a5b7bf6a56739af618">TYPE_INVALID</a> = -1, 
+<a class="el" href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1a0845a054bc76e298900d3bd735d26c9c">TYPE_SWIPE</a> = 1, 
+<a class="el" href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1a32c2a26d674d97f9c9b2e72569ff6869">TYPE_CIRCLE</a> = 4, 
+<a class="el" href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1aa099d1aa238c369e5b2519f2aaca2218">TYPE_SCREEN_TAP</a> = 5, 
+<br/>
+&#160;&#160;<a class="el" href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1a4db232d45dfde82ff0c319f623cc3471">TYPE_KEY_TAP</a> = 6
+<br/>
+ }</td></tr>
 <tr class="memdesc:a6fa6dd4f28c502f0d55abc6b71c6f9b1"><td class="mdescLeft">&#160;</td><td class="mdescRight">The supported types of gestures.  <a href="class_leap_1_1_gesture.html#a6fa6dd4f28c502f0d55abc6b71c6f9b1">More...</a><br/></td></tr>
 <tr class="separator:a6fa6dd4f28c502f0d55abc6b71c6f9b1 inherit pub_types_class_leap_1_1_gesture"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -239,8 +251,7 @@ Additional Inherited Members</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>The current direction of finger tip motion. </p>
-<p>At the start of the key tap gesture, the direction points in the direction of the tap. At the end of the key tap gesture, the direction will either point toward the original finger tip position or it will be a zero-vector, which indicates that finger movement stopped before returning to the starting point.</p>
+<p>The direction of finger tip motion. </p>
 <dl class="section return"><dt>Returns</dt><dd><a class="el" href="struct_leap_1_1_vector.html" title="The Vector struct represents a three-component mathematical vector or point such as a direction or po...">Vector</a> A unit direction vector if the finger tip is moving; otherwise, a zero-vector. </dd></dl>
 
 </div>

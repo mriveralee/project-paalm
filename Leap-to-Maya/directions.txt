@@ -37,13 +37,21 @@ Leap.py
 Download the latest version of clang from llvm.org (3.2 in my case).
 
 Now, with this files and clang you can compile the .so that you need.
-In my case:
-clang++ -arch i386 -arch x8664 -I/Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/include/python2.6 -I/Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6 Leapwrap_python.cpp libLeap.dylib /Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/Python -shared -o _LeapPython.so
+--- GENERAL MAYA =====>
+clang++ -arch i386 -arch x86_64 -I/Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/include/python2.6 -I/Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6 Leapwrappython.cpp libLeap.dylib /Applications/Autodesk/maya2012/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/Python -shared -o _LeapPython.so
+
+--- MY MAYA 2012 ====>  clang++ -arch x86_64 -I /Applications/Autodesk/maya2012/Maya\ 2012.app/Contents/Frameworks/Python.framework/Versions/2.6/include/python2.6 -I/Applications/Autodesk/maya2012/Maya\ 2012.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6 Leapwrappython.cpp libLeap.dylib /Applications/Autodesk/maya2012/Maya\ 2012.app/Contents/Frameworks/Python.framework/Versions/2.6/Python -shared -o _LeapPython.so
+
+-- MY MAYA 2013 =====> clang++ -arch x86_64 -I /Applications/Autodesk/maya2013/Maya\ 2013.app/Contents/Frameworks/Python.framework/Versions/2.6/include/python2.6 -I/Applications/Autodesk/maya2013/Maya\ 2013.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6 Leapwrappython.cpp libLeap.dylib /Applications/Autodesk/maya2013/Maya\ 2013.app/Contents/Frameworks/Python.framework/Versions/2.6/Python -shared -o _LeapPython.so
+
+
 
 In general, for any version of python, the syntax of the command is:
 
-clang++ -arch i386 -arch x8664 -I/<pathtopython>/Versions//include/python -I/<pathtopython>/Versions//lib/python Leapwrappython.cpp libLeap.dylib /<pathto_python>/Versions/Python -shared -o _LeapPython.so
+clang++ -arch i386 -arch x86_64 -I/<pathtopython>/Versions//include/python -I/<pathtopython>/Versions//lib/python Leapwrappython.cpp libLeap.dylib /<pathto_python>/Versions/Python -shared -o _LeapPython.so
 
 Replace version number with the python version number you wish, for example, 2.7, or 2.6
 
-I hope this helps! :D
+
+NOTE TO SELF: PUT ALL OF THE FILES (LEAP.PY, LEAP.PYC, libLEAP.DYLIB, _LEAPPython.so) in to the Maya Python Lib Folder NOT BIN: 
+============>   Applications/Maya.app/Contents/Frameworks/Python.framework/Versions/Current/lib/python2.4/site-packages

@@ -325,8 +325,7 @@ ul.auto-toc {
 <div class="document" id="setting-up-a-unity-project">
 <h1 class="title">Setting up a Unity project</h1>
 
-<p>You can use the Leap SDK as a Unity plug-in to access Leap data in a Unity application. You must have the <em>Pro</em> version of Unity since the standard version does not support native library plug-ins.</p>
-<p>This article discusses how to set up and build a Unity project using the C# binding.</p>
+<p>You can use the Leap SDK as a Unity plug-in to access Leap data in a Unity application. This article describes how to use the plug-in mechanism supported by the <em>Pro</em> version of Unity. To use the  standard version of Unity, which does not support native library plug-ins, please see, <a class="reference external" href="https://developer.leapmotion.com/articles/creating-leap-apps-with-unity-standard-license">Creating Leap apps with Unity (standard license)</a>.</p>
 <div class="contents topic" id="topics">
 <p class="topic-title first">Topics:</p>
 <ul class="simple">
@@ -348,6 +347,8 @@ ul.auto-toc {
 <li><tt class="docutils literal">LeapSDK/lib/UnityAssets/Plugins/LeapCSharp.NET3.5.dll</tt> — Leap C# library for .NET 3.5</li>
 <li><tt class="docutils literal">LeapSDK/lib/UnityAssets/Plugins/LeapCSharp.dll</tt> — 32-bit Leap C# library for Windows</li>
 <li><tt class="docutils literal">LeapSDK/lib/UnityAssets/Plugins/Leap.dll</tt> — 32-bit Leap library for Windows</li>
+<li><tt class="docutils literal">LeapSDK/lib/x86/msvcp100.dll</tt> — 32-bit Visual C++ runtime library</li>
+<li><tt class="docutils literal">LeapSDK/lib/x86/msvcr100.dll</tt> — 32-bit Visual C++ runtime library</li>
 </ul>
 </li>
 <li><p class="first">64-bit Windows:</p>
@@ -355,6 +356,8 @@ ul.auto-toc {
 <li><tt class="docutils literal">LeapSDK/lib/UnityAssets/Plugins/LeapCSharp.NET3.5.dll</tt> — Leap C# library for .NET 3.5</li>
 <li><tt class="docutils literal">LeapSDK/lib/x64/LeapCSharp.dll</tt> — 64-bit Leap C# library for Windows</li>
 <li><tt class="docutils literal">LeapSDK/lib/x64/Leap.dll</tt> — 64-bit Leap library for Windows</li>
+<li><tt class="docutils literal">LeapSDK/lib/x64/msvcp100.dll</tt> — 64-bit Visual C++ runtime library</li>
+<li><tt class="docutils literal">LeapSDK/lib/x64/msvcr100.dll</tt> — 64-bit Visual C++ runtime library</li>
 </ul>
 <p><em>Note: Do not use the 64-bit libraries in the Unity editor on Windows.</em></p>
 </li>
