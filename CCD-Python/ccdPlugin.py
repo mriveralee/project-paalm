@@ -1,6 +1,12 @@
 import pymel.all as pm
+from pymel.core import * 
 import sys, Leap, string
 import math as Math
+
+import pymel.api as pma
+import pymel.core.datatypes as dt 
+
+
 
 
 #Target point of interest - initial conditions
@@ -86,6 +92,9 @@ def projectPoint(point, sphereCenter, armLength):
     print "Projecting the point"
     print point
 
+    return point
+
+
 
     sPoint = point-sphereCenter
     #Magnitude of the point
@@ -108,7 +117,7 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
     DISTANCE_THRESHOLD = 0.1
     iterations = 1
     jointNum = 4
-    MAYA_TEST = True
+    MAYA_TEST = False
     #Initialize Pisitions
     initializePositions()
     #print "ccd test"
@@ -143,16 +152,55 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
         print V1
         print "V2 is:"
         print V2
-  
-        if (MAYA_TEST):
+
+        DEG_TO_RAD = Math.pi/180
+        if not (MAYA_TEST):
+            #Get current matrix - CURRENTLY DOES NOT INCORPORATE SCALE (cutting off values)
+            mVals= pm.xform(jointKey, query=True, matrix=True, ws=True)
+            
+            #Construct matrix from values of our composite matrix
+            mat = [ [ float(mVals[0]),  float(mVals[1]),  float(mVals[2]), float(mVals[3])  ], 
+                    [ float(mVals[4]),  float(mVals[5]),  float(mVals[6]), float(mVals[7])  ],
+                    [ float(mVals[8]),  float(mVals[9]), float(mVals[10]), float(mVals[11]) ],
+                    [ float(mVals[12]), float(mVals[13]), float(mVals[14]), float(mVals[15]) ]  ]
+
+            #Turn mat into a transformation Matrix
+            mat = dt.TransformationMatrix(dt.Matrix(mat))
+
+
+
+            #Get Axis & Angle - Returns vector and angle in degrees
+            axisAngle = pm.angleBetween(v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))            
+            #Make a quaternion from the axis and the angle
+            axis = dt.Vector(axisAngle[0], axisAngle[1], axisAngle[2])
+            angle =  (axisAngle[3]*DEG_TO_RAD)                                      #Convert Angle to Degrees
+            rotQuat = dt.Quaternion(angle, axis)
+            #Apply Rotation to the matrix
+            mat.addRotationQuaternion(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w)
+            mat = mat.asMatrix()                                                    #Convert into a now matrix
+            matAsFloatTuple = ( mat.a00, mat.a01, mat.a02, mat.a03, 
+                                mat.a10, mat.a11, mat.a12, mat.a13,
+                                mat.a20, mat.a21, mat.a22, mat.a23,
+                                mat.a30, mat.a31, mat.a32, mat.a33
+                                )                                                               # get
+
+            #Set the composition matrix on the object
+
+
+            print "Rotation is:"
+            print finalTrans
+            magicNum = 0.001   # For Radians
+
+            pm.xform(jointKey, ws=True, matrix=matAsFloatTuple) #Removed Euler euler=True because it was rotating about local axes
+            pm.refresh(force=True)
+        elif (MAYA_TEST):
             #print "Maya Angle Between Test"
 
             #Now get Euler angles from Maya that will move v1 to be v2
-        
+            
             rot = pm.angleBetween(euler=True, v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))
             print "Rotation is:"
             print rot
-
 
             #Adjusting 'joints
            # print pm.joint('joint4', edit=True, angleX=-60.27)'
@@ -166,15 +214,13 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
             #Now we rotate about these angles on the current Joint
             #removed 
             #pm.xform(jointKey, ws=True,  rotation=(rot[0], rot[1], rot[2]))  #Removed Euler euler=True because it was rotating about local axes
-            
 
             #Trying Rotate Function
             #QUICK HACK- NOTICED ROTATING IN SUCCESSION CAUSES ISSUES SO WE MOVE TO ORIGINAL PLACE AND TRY ROTATION
-            pm.rotate(jointKey, [0, 0, 0], absolute=True)
+            m.rotate(jointKey, [0, 0, 0], absolute=True)
             pm.refresh(force=True)
-            pm.rotate(jointKey, [rot[0], rot[1], rot[2]] , absolute=True)  #Removed Euler euler=True because it was rotating about local axes
+            pm.rotate(jointKey, [rot[0], rot[1], rot[2]], absolute=True)  #Removed Euler euler=True because it was rotating about local axes
             pm.refresh(force=True)
-            #input("Press Enter to continue...")
 
         #FORCE REFRESH OF VIEWS
         #pm.refresh(force=True)
