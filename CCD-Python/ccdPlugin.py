@@ -9,6 +9,8 @@ import pymel.core.datatypes as dt
 
 
 
+
+
 #Target point of interest - initial conditions
 #TP = [13.327005785798825, 5.933350084777719, 1.6255290651771213];
 #TARGET_POINT = Leap.Vector(TP[0],TP[1], TP[2])
@@ -17,6 +19,13 @@ import pymel.core.datatypes as dt
 #Joints and Positions of finger
 EFFECTOR_KEY = 'joint5'
 TARGET_KEY = 'targetPoint'
+DEG_TO_RAD = Math.pi/180
+
+CONFIG = {
+    'JOINT_ANGLE_MULTIPLIER': 0.5
+}
+
+
 JOINTS = {
    'joint1': {
         'base-pos': Leap.Vector(0, 0, 0),
@@ -82,171 +91,122 @@ def initializePositions():
     #print TARGET_POINT
 
         
-#Projects a point on to the Sphere
+#Projects a point on to the Sphere whose radius is the armLenght
 def projectPoint(point, sphereCenter, armLength):
-    #Radius of our reach sphere
-    #armLength = 20
-    #Vector in sphere coordinate system
-    #print "POINT"
-    #return point
-    print "Projecting the point"
-    print point
-
-    return point
-
-
-
     sPoint = point-sphereCenter
     #Magnitude of the point
     pMag = sPoint.magnitude
 
     if (pMag <= armLength):
-        print "in range returning same point"
+        #This point is within our sphere so we need not project it
+        #print "in range returning same point"
         return point
-
     #Vector to projected Point
     Q = (point/pMag)*armLength
     #The point projected onto the Sphere
     projectPt = Q + sphereCenter
-    print "Projected as"
-    print projectPt
     return projectPt
 
 #CCD algorithm - with a targetPos
+# While distance from effector to target > threshold and numloops<max
+    #   Take current bone
+    #   Build vector V1 from bone pivot to effector
+    #   Build vector V2 from bone pivot to target
+    #   Get the angle between V1 and V2
+    #   Get the rotation direction
+    #   Apply a differential rotation to the current bone
+    #   If it is the base node then the new current bone is the last bone in the chain
+    #   Else the new current bone is the previous one in the chain
+#End while
 def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
-    DISTANCE_THRESHOLD = 0.1
-    iterations = 1
+    DISTANCE_THRESHOLD = 0.01
+    iterations = 400
     jointNum = 4
-    MAYA_TEST = False
-    #Initialize Pisitions
     initializePositions()
-    #print "ccd test"
-    # While distance from effector to target > threshold and numloops<max
-            #   Take current bone
-            #   Build vector V1 from bone pivot to effector
-            #   Build vector V2 from bone pivot to target
-            #   Get the angle between V1 and V2
-            #   Get the rotation direction
-            #   Apply a differential rotation to the current bone
-            #   If it is the base node then the new current bone is the last bone in the chain
-            #   Else the new current bone is the previous one in the chain
-    #End while
     targetTipPos = JOINTS[TARGET_KEY]['pos']
     distance = (targetTipPos - JOINTS[EFFECTOR_KEY]['pos']).magnitude
 
 
     while (distance > DISTANCE_THRESHOLD and iterations > 0):
+        print distance
+        if (distance > 1):
+            CONFIG['JOINT_ANGLE_MULTIPLIER'] = 1.0
+        else:
+            CONFIG['JOINT_ANGLE_MULTIPLIER'] = 0.4
+
         #Current Joint & Position
         jointKey = 'joint'+str(jointNum)
-        jointPos = JOINTS[jointKey]['pos']
-
+        
         #Effector Position
         effectorPos = JOINTS[EFFECTOR_KEY]['pos']
-
-        #The Two Vectors of Interest
-        V1 = (effectorPos-jointPos)
-        #V1 /= V1.magnitude
-        V2 = (targetTipPos-jointPos)
-        #V2 /= V2.magnitude
-        print "V1 is "
-        print V1
-        print "V2 is:"
-        print V2
-
-        DEG_TO_RAD = Math.pi/180
-        if not (MAYA_TEST):
-            #Get current matrix - CURRENTLY DOES NOT INCORPORATE SCALE (cutting off values)
-            mVals= pm.xform(jointKey, query=True, matrix=True, ws=True)
-            
-            #Construct matrix from values of our composite matrix
-            mat = [ [ float(mVals[0]),  float(mVals[1]),  float(mVals[2]), float(mVals[3])  ], 
-                    [ float(mVals[4]),  float(mVals[5]),  float(mVals[6]), float(mVals[7])  ],
-                    [ float(mVals[8]),  float(mVals[9]), float(mVals[10]), float(mVals[11]) ],
-                    [ float(mVals[12]), float(mVals[13]), float(mVals[14]), float(mVals[15]) ]  ]
-
-            #Turn mat into a transformation Matrix
-            mat = dt.TransformationMatrix(dt.Matrix(mat))
-
-
-
-            #Get Axis & Angle - Returns vector and angle in degrees
-            axisAngle = pm.angleBetween(v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))            
-            #Make a quaternion from the axis and the angle
-            axis = dt.Vector(axisAngle[0], axisAngle[1], axisAngle[2])
-            angle =  (axisAngle[3]*DEG_TO_RAD)                                      #Convert Angle to Degrees
-            rotQuat = dt.Quaternion(angle, axis)
-            #Apply Rotation to the matrix
-            mat.addRotationQuaternion(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w)
-            mat = mat.asMatrix()                                                    #Convert into a now matrix
-            matAsFloatTuple = ( mat.a00, mat.a01, mat.a02, mat.a03, 
-                                mat.a10, mat.a11, mat.a12, mat.a13,
-                                mat.a20, mat.a21, mat.a22, mat.a23,
-                                mat.a30, mat.a31, mat.a32, mat.a33
-                                )                                                               # get
-
-            #Set the composition matrix on the object
-
-
-            print "Rotation is:"
-            print finalTrans
-            magicNum = 0.001   # For Radians
-
-            pm.xform(jointKey, ws=True, matrix=matAsFloatTuple) #Removed Euler euler=True because it was rotating about local axes
-            pm.refresh(force=True)
-        elif (MAYA_TEST):
-            #print "Maya Angle Between Test"
-
-            #Now get Euler angles from Maya that will move v1 to be v2
-            
-            rot = pm.angleBetween(euler=True, v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))
-            print "Rotation is:"
-            print rot
-
-            #Adjusting 'joints
-           # print pm.joint('joint4', edit=True, angleX=-60.27)'
-
-
-           #axisAngle = pm.angleBetween(v1=(V1.x, V1.y, V1.z), v2=(V2.x, V1.y, V1.z)) 
-           #axis = (axisAngle[0], axisAngle[1], axisAngle[2])
-           #angle = axisAngle[3]
-           #pm.xform(jointKey, ws=True, a=True, rotateAxis=axis,  rotation=(angle, angle,angle))
-
-            #Now we rotate about these angles on the current Joint
-            #removed 
-            #pm.xform(jointKey, ws=True,  rotation=(rot[0], rot[1], rot[2]))  #Removed Euler euler=True because it was rotating about local axes
-
-            #Trying Rotate Function
-            #QUICK HACK- NOTICED ROTATING IN SUCCESSION CAUSES ISSUES SO WE MOVE TO ORIGINAL PLACE AND TRY ROTATION
-            m.rotate(jointKey, [0, 0, 0], absolute=True)
-            pm.refresh(force=True)
-            pm.rotate(jointKey, [rot[0], rot[1], rot[2]], absolute=True)  #Removed Euler euler=True because it was rotating about local axes
-            pm.refresh(force=True)
-
-        #FORCE REFRESH OF VIEWS
-        #pm.refresh(force=True)
-
+        
+        #Update our joint rotation based on the effector Position and the Target Effector Pos
+        updateJointRotation(jointKey, effectorPos, targetTipPos)
+        
         #Update the coordinates of our tip position
         newCoords = pm.xform(EFFECTOR_KEY, query=True, ws=True, t=True)
-        print 'Current Effector Coords'
-        print newCoords
-        print 'Target Coords'
-        print targetTipPos
 
         #Uodate Effector Position
         JOINTS[EFFECTOR_KEY]['pos'] = Leap.Vector(newCoords[0], newCoords[1], newCoords[2])
        
         #Update our distance from the target Point
         distance = (targetTipPos - JOINTS[EFFECTOR_KEY]['pos']).magnitude
-        print "Our Distance is"
-        print distance
+
         #Decrement Iteration
         iterations = iterations - 1
+        
         #Move onto next joint in the chain
         jointNum = jointNum - 1
+        
         #Cycle look if jointNum goes out of bound
         if (jointNum < 1):
             jointNum = 4
             initializePositions()
+
+def updateJointRotation(jointKey, effectorPos, targetTipPos):
+    #Position of the joiny
+    jointPos = JOINTS[jointKey]['pos']
+    #The Two Vectors of Interest
+    V1 = (effectorPos-jointPos)
+    V2 = (targetTipPos-jointPos)
+
+    #Get current matrix - CURRENTLY DOES NOT INCORPORATE SCALE (cutting off values)
+    mVals= pm.xform(jointKey, query=True, matrix=True, ws=True)
+
+    #Construct matrix from values of our composite matrix
+    mat = [ [ float(mVals[0]),  float(mVals[1]),  float(mVals[2]), float(mVals[3])  ], 
+            [ float(mVals[4]),  float(mVals[5]),  float(mVals[6]), float(mVals[7])  ],
+            [ float(mVals[8]),  float(mVals[9]), float(mVals[10]), float(mVals[11]) ],
+            [ float(mVals[12]), float(mVals[13]), float(mVals[14]), float(mVals[15]) ]  ]
+
+    #Turn mat into a transformation Matrix
+    mat = dt.TransformationMatrix(dt.Matrix(mat))
+
+    #Get Axis & Angle - Returns vector and angle in degrees
+    axisAngle = pm.angleBetween(v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))            
+
+    #Make a quaternion from the axis and the angle
+    axis = dt.Vector(axisAngle[0], axisAngle[1], axisAngle[2])
+
+    #Convert Angle to Degrees
+    angle =  (axisAngle[3]*DEG_TO_RAD)
+
+    #Apply magic number to the joint to prevent moving too sharply to the targetPoint
+    angle *= CONFIG['JOINT_ANGLE_MULTIPLIER'] #For radian 
+    rotQuat = dt.Quaternion(angle, axis)
+
+    #Apply Rotation to the matrix
+    mat.addRotationQuaternion(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w, space='world')   #object space
+    mat = mat.asMatrix()                                                    #Convert into a now matrix
+    matAsFloatTuple = ( mat.a00, mat.a01, mat.a02, mat.a03, 
+                        mat.a10, mat.a11, mat.a12, mat.a13,
+                        mat.a20, mat.a21, mat.a22, mat.a23,
+                        mat.a30, mat.a31, mat.a32, mat.a33
+                        )
+
+    #Set the composition matrix on the object
+    pm.xform(jointKey, ws=True, matrix=matAsFloatTuple) #Removed Euler euler=True because it was rotating about local axes
+    pm.refresh(force=True)
 
 
 initializePositions()
