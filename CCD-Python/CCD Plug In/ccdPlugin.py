@@ -24,14 +24,51 @@ EFFECTOR_KEY = 'joint5'
 TARGET_KEY = 'targetPoint'
 DEG_TO_RAD = Math.pi/180
 EPSILON = 0.001
+MIN_JOINT_ID = 1
+
+#Mapping Range of Maya CS
+
+MAYA_MAX_X = 20
+MAYA_MIN_X = -20
+MAYA_RANGE_X = MAYA_MAX_X-MAYA_MIN_X
+
+MAYA_MAX_Y = 12
+MAYA_MIN_Y = -12
+MAYA_RANGE_Y = MAYA_MAX_Y-MAYA_MIN_Y
+
+MAYA_MAX_Z = 20
+MAYA_MIN_Z = -20
+MAYA_RANGE_Z = MAYA_MAX_Z-MAYA_MIN_Z
+
+#Configuration of Coordinate Max, Min in Leap CS
+LEAP_MAX_X = 110
+LEAP_MIN_X = -80
+LEAP_RANGE_X = LEAP_MAX_X-LEAP_MIN_X
+
+LEAP_MAX_Y = 430  #450
+LEAP_MIN_Y = 280  # 130
+LEAP_RANGE_Y = LEAP_MAX_Y-LEAP_MIN_Y
+
+LEAP_MAX_Z = 70   #-50
+LEAP_MIN_Z = 20   #180
+LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
+
 
 CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5
 }
 
-#create Command port
+#create Command port - sets port up to receive data on the mel function for receiveTipPos
+# This then forwards the data to the python function
 def open_command_port():
-    pm.commandPort(':6001')
+    #Check if our port is already open if it isn't open it
+    for i in pm.commandPort(q=True,lp=True):
+        if (i ==':6001'):
+            #Port already exists
+            return
+    #Otherwise open the port
+    pm.commandPort(name=':6001')
+
 
 open_command_port()
 
@@ -129,7 +166,7 @@ def project_point(point, sphereCenter, armLength):
 #End while
 def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
     DISTANCE_THRESHOLD = 0.01
-    iterations = 400
+    iterations = 30
     jointNum = 4
     init_joint_positions()
     targetTipPos = JOINTS[TARGET_KEY]['pos']
@@ -137,7 +174,7 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
 
 
     while (distance > DISTANCE_THRESHOLD and iterations > 0):
-        print distance
+        #print distance
         if (distance > 1):
             CONFIG['JOINT_ANGLE_MULTIPLIER'] = 1.0
         else:
@@ -173,7 +210,7 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
         jointNum = jointNum - 1
         
         #Cycle look if jointNum goes out of bound
-        if (jointNum < 1):
+        if (jointNum < MIN_JOINT_ID):
             jointNum = 4
             init_joint_positions()
 
@@ -225,13 +262,53 @@ def update_joint_rotation(jointKey, effectorPos, targetTipPos):
 
 #Interfacing with a command port thatsend tip position updates
 def receive_tip_position_from_leap(tpX, tpY, tpZ):
+    USE_DIRECTION = True
+    if not USE_DIRECTION:
+        #Map Point Value to maya CS
+        print tpX
+        clipped = clip_tip_position(tpX, tpY, tpZ)
+        tpX = clipped[0]
+        tpY = clipped[1]
+        tpZ = clipped[2]
+        print tpX
+        #Flip the x-axis to reflect the leap CDS with MAYA
+        tpX *= -1
+
+        #Map the Components to fit into MAYA_CUBE Size RANGE
+        tpX = ((tpX-LEAP_MIN_X)/LEAP_RANGE_X)*MAYA_RANGE_X + MAYA_MIN_X
+        tpY = ((tpY-LEAP_MIN_Y)/LEAP_RANGE_Y)*MAYA_RANGE_Y + MAYA_MIN_Y
+        tpZ = ((tpZ-LEAP_MIN_Z)/LEAP_RANGE_Z)*MAYA_RANGE_Z + MAYA_MIN_Z
+
     updatedPos = Leap.Vector (tpX, tpY, tpZ)
+    print updatedPos
     JOINTS[TARGET_KEY]['pos'] = updatedPos
     JOINTS[TARGET_KEY]['base-pos'] = updatedPos
     #Note: relative adds translation;absolute sets
-    pm.xform(TARGET_KEY, ws=True, t=(tpX, tpY, tpY), absolute=True) 
+    pm.xform(TARGET_KEY, ws=True, t=(tpX, tpY, tpY), absolute=True)
+    pm.refresh(force=True)
+
     #Perform CCD now :)
     perform_ccd()
+
+def clip_tip_position(tpX, tpY, tpZ):
+    #Clip X-Comp
+    if (tpX < LEAP_MIN_X):
+        tpX = LEAP_MIN_X
+    elif (tpX > LEAP_MAX_X):
+        tpX = LEAP_MAX_X
+    #Clip Y-comp
+    if (tpY < LEAP_MIN_Y):
+        tpY = LEAP_MIN_Y
+    elif (tpY > LEAP_MAX_Y):
+        tpY = LEAP_MAX_Y
+    #Clip z-comp
+    if (tpZ < LEAP_MIN_Z):
+        tpZ = LEAP_MIN_Z
+    elif (tpZ > LEAP_MAX_Z):
+        tpZ = LEAP_MAX_Z
+    return [tpX, tpY, tpZ] 
+     
+
 
 # init_joint_positions()
 # perform_ccd() 
