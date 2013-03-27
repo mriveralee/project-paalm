@@ -96,8 +96,8 @@ class MayaConnection():
         self.maya.send(sphere_cmd)
 
     #Sends a tip position update to Maya to trigger a perform_ccd() action 
-    def send_tip_position_to_maya(self, tpX, tpY, tpZ):
-        command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+")\")\n"
+    def send_tip_position_to_maya(self, tpX, tpY, tpZ, lengthRatio):
+        command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+","+str(lengthRatio)+")\")\n"
         self.maya.send(command)
 #####
 

@@ -22,10 +22,12 @@ import pymel.core.datatypes as dt
 
 EFFECTOR_KEY = 'joint5'
 TARGET_KEY = 'targetPoint'
+BASE_KEY = 'joint1'
 DEG_TO_RAD = Math.pi/180
 EPSILON = 0.001
 MIN_JOINT_ID = 1
-
+MAX_JOINT_ID = 4
+JOINT_CHAIN_LENGTH = 20
 #Mapping Range of Maya CS
 
 MAYA_MAX_X = 20
@@ -165,9 +167,16 @@ def project_point(point, sphereCenter, armLength):
     #   Else the new current bone is the previous one in the chain
 #End while
 def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
+    #Config bool that tells us if we should be incrementing jointnums from 1
+    #If false we decrement from the max joint joint
     DISTANCE_THRESHOLD = 0.01
-    iterations = 30
+    iterations = 40
     jointNum = 4
+
+    USE_INCREASE_JOINT_NUM = True
+    if USE_INCREASE_JOINT_NUM:
+        jointNum = 1
+
     init_joint_positions()
     targetTipPos = JOINTS[TARGET_KEY]['pos']
     distance = (targetTipPos - JOINTS[EFFECTOR_KEY]['pos']).magnitude
@@ -206,13 +215,19 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
         #Decrement Iteration
         iterations = iterations - 1
         
-        #Move onto next joint in the chain
-        jointNum = jointNum - 1
-        
-        #Cycle look if jointNum goes out of bound
-        if (jointNum < MIN_JOINT_ID):
-            jointNum = 4
-            init_joint_positions()
+        if USE_INCREASE_JOINT_NUM:
+            #Move to next joint closest to the TP
+            jointNum = jointNum + 1
+            if jointNum > MAX_JOINT_ID:
+                #keep the joint nums in bounds
+                jointNum = 1
+        else:
+            #Move onto next joint in the chain
+            jointNum = jointNum - 1
+            #Cycle look if jointNum goes out of bound
+            if (jointNum < MIN_JOINT_ID):
+                jointNum = 4
+                init_joint_positions()
 
 def update_joint_rotation(jointKey, effectorPos, targetTipPos):
     #Position of the joiny
@@ -261,7 +276,7 @@ def update_joint_rotation(jointKey, effectorPos, targetTipPos):
 
 
 #Interfacing with a command port thatsend tip position updates
-def receive_tip_position_from_leap(tpX, tpY, tpZ):
+def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
     USE_DIRECTION = True
     if not USE_DIRECTION:
         #Map Point Value to maya CS
@@ -278,13 +293,19 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ):
         tpX = ((tpX-LEAP_MIN_X)/LEAP_RANGE_X)*MAYA_RANGE_X + MAYA_MIN_X
         tpY = ((tpY-LEAP_MIN_Y)/LEAP_RANGE_Y)*MAYA_RANGE_Y + MAYA_MIN_Y
         tpZ = ((tpZ-LEAP_MIN_Z)/LEAP_RANGE_Z)*MAYA_RANGE_Z + MAYA_MIN_Z
-
-    updatedPos = Leap.Vector (tpX, tpY, tpZ)
-    print updatedPos
+    
+    #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
+    lengthRatio = JOINT_CHAIN_LENGTH*lengthRatio
+    #Create a vector from the coordinates
+    updatedPos = (Leap.Vector (tpX, tpY, tpZ))
+    #Apply the joint chain length to the vector of motion & add the base position
+    
+    updatedPos = updatedPos*lengthRatio + JOINTS[BASE_KEY]['pos']
+    #print updatedPos
     JOINTS[TARGET_KEY]['pos'] = updatedPos
     JOINTS[TARGET_KEY]['base-pos'] = updatedPos
     #Note: relative adds translation;absolute sets
-    pm.xform(TARGET_KEY, ws=True, t=(tpX, tpY, tpY), absolute=True)
+    pm.xform(TARGET_KEY, ws=True, t=(updatedPos[0], updatedPos[1], updatedPos[2]), absolute=True)
     pm.refresh(force=True)
 
     #Perform CCD now :)

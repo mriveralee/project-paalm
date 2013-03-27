@@ -17,13 +17,17 @@ maya = MayaConnection.MayaConnection(MAYA_PORT)
 
 #Demos
 IS_TRACKING_DEMO = True
-MAYA_EFFECTOR_LENGTH = 20
+MAYA_EFFECTOR_LENGTH = 1
 FRAME_SLEEP_TIME = 0.7
+
 
 
 #Listener for phaleangeal angle approximator
 class PAListener(Leap.Listener):
-
+    NEED_BASELINE = True
+    MAX_BASELINE_FRAMES = 1000
+    CURRENT_NUM_BASELINE_FRAMES = 0
+    MAX_TIP_LENGTH = 0.0
 
     #On initilization of listener
     def on_init(self, controller):
@@ -58,6 +62,13 @@ class PAListener(Leap.Listener):
             # Check if the hand has any fingers
             fingers = hand.fingers
             if not fingers.empty:
+
+                #Get a BaseLine of length for the index finger
+                if self.NEED_BASELINE:
+                    self.capture_baseline_lengths(fingers)
+                    return
+
+
                 #Sort fingers to get order by 
                 fingers = self.sort_fingers_by_x(fingers)
                 #print fingers
@@ -68,8 +79,12 @@ class PAListener(Leap.Listener):
                 #indexPosition = indexFinger.tip_position
                 #indexWidth = indexFinger.width
                 #indexTipVelocity = 
-                
+            
                 indexDir = indexFinger.direction
+                
+                #TTRY TIP AND PALM POS
+                indexPosition = indexFinger.tip_position
+
                 indexLength = indexFinger.length
                 #Direction vector in Maya
                 mayaDir = self.map_dir_to_maya(indexDir, MAYA_EFFECTOR_LENGTH)
@@ -78,14 +93,18 @@ class PAListener(Leap.Listener):
                 USE_DIRECTION = True
               
                 if (USE_DIRECTION):
-                    targetTipPos = targetTipPos = mayaDir #self.get_maya_effector_tip_pos(mayaDir, mayaEffectorBasePos)
+                    targetTipPos = indexDir.normalized #mayaDir #self.get_maya_effector_tip_pos(mayaDir, mayaEffectorBasePos)
                 else:
                     targetTipPos = indexFinger.tip_position
 
                 #print "End Effector Pos: " + str(mEndTipPos)
                 print targetTipPos
                 #Flip the X-direction because maya's is the other way
-                maya.send_tip_position_to_maya(targetTipPos[0],targetTipPos[1],targetTipPos[2])
+                print (targetTipPos*20)
+
+                lengthRatio = indexLength/self.MAX_TIP_LENGTH
+                print "Index Length Ratio: " + str(lengthRatio)
+                maya.send_tip_position_to_maya(targetTipPos[0],targetTipPos[1],targetTipPos[2], lengthRatio)
                 
 
                 time.sleep(FRAME_SLEEP_TIME)
@@ -94,6 +113,27 @@ class PAListener(Leap.Listener):
 
                 #Update the position of the joint
                 #maya.move(effector, mEndTipPos.x, mEndTipPos.y, mEndTipPos.z)
+
+
+    #Gets a baseline avg of the finger tip lengths for mapping to Maya
+    def capture_baseline_lengths(self, fingers):
+        if (self.CURRENT_NUM_BASELINE_FRAMES < self.MAX_BASELINE_FRAMES and (not fingers.empty)):
+            #Sort the Fingers
+            fingers = self.sort_fingers_by_x(fingers)
+            #Grab index finger
+            indexFinger = fingers[0]
+            #Sum the length into the BASELINE Length
+            self.MAX_TIP_LENGTH += indexFinger.length
+            print "BASE: " + str(self.CURRENT_NUM_BASELINE_FRAMES)+ ", Length: " + str(indexFinger.length)
+            self.CURRENT_NUM_BASELINE_FRAMES += 1
+        #When we have the max number of baseline frames, average the values for the fingers
+        #Then begin actual target point collection
+        if (self.CURRENT_NUM_BASELINE_FRAMES == self.MAX_BASELINE_FRAMES):
+            self.MAX_TIP_LENGTH = self.MAX_TIP_LENGTH/self.MAX_BASELINE_FRAMES
+            self.NEED_BASELINE = False
+            print "Index Average Max Length: " + str(self.MAX_TIP_LENGTH)
+
+
 
 
     #Gets the Effector Tip Position using a maya mapped Direction and the base(knuckle position)
