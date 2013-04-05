@@ -153,7 +153,7 @@ def nodeCreator():
 def nodeInitializer():
 	unitAttr = OpenMaya.MFnUnitAttribute()
 	typedAttr = OpenMaya.MFnTypedAttribute()
-
+	
 	animCube.time = unitAttr.create("time", "tm", OpenMaya.MFnUnitAttribute.kTime, 0.0)
 	animCube.outputMesh = typedAttr.create("outputMesh", "out", OpenMaya.MFnData.kMesh)
 

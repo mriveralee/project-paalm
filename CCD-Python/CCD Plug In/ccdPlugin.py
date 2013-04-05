@@ -6,7 +6,10 @@ import math as Math
 
 #import pymel.api as pma
 #PyMel Data Types for Matrices, Quaternions etc
-import pymel.core.datatypes as dt 
+import pymel.core.datatypes as dt
+import pymel.core.animation as pma 
+
+
 
 
 
@@ -18,16 +21,16 @@ import pymel.core.datatypes as dt
 #TARGET_POINT = Leap.Vector(TP[0],TP[1], TP[2])
 
 
-#Joints and Positions of finger
 
-EFFECTOR_KEY = 'joint5'
+
+#Joints and Positions of finger
+TIME_KEY = 'CURRENT_TIME'
+EFFECTOR_KEY = 'joint9'
 TARGET_KEY = 'targetPoint'
-BASE_KEY = 'joint1'
+BASE_KEY = 'joint6'#'joint1'
 DEG_TO_RAD = Math.pi/180
 EPSILON = 0.001
-MIN_JOINT_ID = 1
-MAX_JOINT_ID = 4
-JOINT_CHAIN_LENGTH = 20
+
 #Mapping Range of Maya CS
 
 MAYA_MAX_X = 20
@@ -57,8 +60,11 @@ LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
 
 
 CONFIG = {
-    'JOINT_ANGLE_MULTIPLIER': 0.5
+    'JOINT_ANGLE_MULTIPLIER': 0.5,
+    'CURRENT_TIME': 1,                   #Current Animation time
+    'MAX_TIME': 100
 }
+
 
 #create Command port - sets port up to receive data on the mel function for receiveTipPos
 # This then forwards the data to the python function
@@ -75,31 +81,55 @@ def open_command_port():
 open_command_port()
 
 JOINTS = {
-   'joint1': {
-        'base-pos': Leap.Vector(0, 0, 0),
-        'pos': Leap.Vector(0, 0, 0),
-        'rot': Leap.Vector(0, 90, 0),
-        'name': 'palm'
-    },
-    'joint2': {
+   # 'joint1': {
+   #      'base-pos': Leap.Vector(0, 0, 0),
+   #      'pos': Leap.Vector(0, 0, 0),
+   #      'rot': Leap.Vector(0, 90, 0),
+   #      'name': 'palm'
+   #  },
+   #  'joint2': {
+   #      'base-pos': Leap.Vector(0, 0, -5),
+   #      'pos': Leap.Vector(0, 0, -5),
+   #      'rot': Leap.Vector(0, 0, 0),
+   #      'name': 'knuckle'
+   #  },
+   #  'joint3': {
+   #      'base-pos': Leap.Vector(0, 0, -10),
+   #      'pos': Leap.Vector(0, 0, -10),
+   #      'rot': Leap.Vector(0, 0, 0),
+   #      'name': 'mid-joint'
+   #  },
+   #  'joint4': {
+   #      'base-pos': Leap.Vector(0, 0, -15),
+   #      'pos': Leap.Vector(0, 0, -15),
+   #      'rot': Leap.Vector(0, 0, 0),
+   #      'name': 'tip-joint'
+   #  },
+   #  'joint5': {
+   #      'base-pos': Leap.Vector(0, 0, -20),
+   #      'pos': Leap.Vector(0, 0, -20),
+   #      'rot': Leap.Vector(0, 0, 0),
+   #      'name': 'end-effector'
+   #  },
+    'joint6': {
         'base-pos': Leap.Vector(0, 0, -5),
         'pos': Leap.Vector(0, 0, -5),
         'rot': Leap.Vector(0, 0, 0),
         'name': 'knuckle'
     },
-    'joint3': {
+    'joint7': {
         'base-pos': Leap.Vector(0, 0, -10),
         'pos': Leap.Vector(0, 0, -10),
         'rot': Leap.Vector(0, 0, 0),
         'name': 'mid-joint'
     },
-    'joint4': {
+    'joint8': {
         'base-pos': Leap.Vector(0, 0, -15),
         'pos': Leap.Vector(0, 0, -15),
         'rot': Leap.Vector(0, 0, 0),
         'name': 'tip-joint'
     },
-    'joint5': {
+    'joint9': {
         'base-pos': Leap.Vector(0, 0, -20),
         'pos': Leap.Vector(0, 0, -20),
         'rot': Leap.Vector(0, 0, 0),
@@ -112,6 +142,9 @@ JOINTS = {
         'name': 'targetPoint'
     }
 }
+MIN_JOINT_ID = 6 #1
+MAX_JOINT_ID = 8 #4
+JOINT_CHAIN_LENGTH = 20
 
 
 #Initialize our positions from out Maya joint        
@@ -133,12 +166,45 @@ def init_joint_positions():
     TARGET_POINT = Leap.Vector(posX[0], posX[1], posX[2])
     #PRoject to be in range of the armLength
     armLength = 20 #sum of the arm lengths
-    basePtKey = 'joint1'
+    basePtKey = BASE_KEY
     sphereCenter = JOINTS[basePtKey]['pos']
     JOINTS[TARGET_KEY]['pos'] = project_point(TARGET_POINT, sphereCenter, armLength)
     #print TARGET_POINT
 
-        
+
+def set_animation_keyframe():
+    #Sets a key frame for all attributes of the current joint
+    currentTime = get_current_time()
+    for key in JOINTS:
+        pma.setKeyframe(key, t=currentTime);
+    increment_time()
+
+
+def get_current_time():
+    return CONFIG[TIME_KEY]
+
+def get_max_time():
+    return CONFIG['MAX_TIME']
+
+def increment_time():
+    CONFIG[TIME_KEY] = CONFIG[TIME_KEY] + 15
+    pma.playbackOptions(loop='once', maxTime=CONFIG[TIME_KEY])
+    currentTime = get_current_time()
+    maxTimeBuffer =  get_max_time()-10
+    if (currentTime >= maxTimeBuffer):
+        increase_max_time()
+
+
+def increase_max_time():
+    CONFIG['MAX_TIME'] = CONFIG['MAX_TIME'] + 200
+    pma.playbackOptions(maxTime=CONFIG['MAX_TIME'])
+
+
+
+def reset_time(): 
+    CONFIG[TIME_KEY] = 1
+    CONFIG['MAX_TIME'] = 100
+
 #Projects a point on to the Sphere whose radius is the armLenght
 def project_point(point, sphereCenter, armLength):
     sPoint = point-sphereCenter
@@ -170,12 +236,12 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
     #Config bool that tells us if we should be incrementing jointnums from 1
     #If false we decrement from the max joint joint
     DISTANCE_THRESHOLD = 0.01
-    iterations = 40
-    jointNum = 4
+    iterations = 90
+    jointNum = MAX_JOINT_ID
 
-    USE_INCREASE_JOINT_NUM = True
+    USE_INCREASE_JOINT_NUM = False
     if USE_INCREASE_JOINT_NUM:
-        jointNum = 1
+        jointNum = MIN_JOINT_ID
 
     init_joint_positions()
     targetTipPos = JOINTS[TARGET_KEY]['pos']
@@ -183,6 +249,9 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
 
 
     while (distance > DISTANCE_THRESHOLD and iterations > 0):
+        #setKeyframe
+        print get_current_time()
+        set_animation_keyframe()
         #print distance
         if (distance > 1):
             CONFIG['JOINT_ANGLE_MULTIPLIER'] = 1.0
@@ -220,14 +289,15 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
             jointNum = jointNum + 1
             if jointNum > MAX_JOINT_ID:
                 #keep the joint nums in bounds
-                jointNum = 1
+                jointNum = MIN_JOINT_ID
         else:
             #Move onto next joint in the chain
             jointNum = jointNum - 1
             #Cycle look if jointNum goes out of bound
             if (jointNum < MIN_JOINT_ID):
-                jointNum = 4
+                jointNum = MAX_JOINT_ID
                 init_joint_positions()
+        
 
 def update_joint_rotation(jointKey, effectorPos, targetTipPos):
     #Position of the joiny
@@ -329,7 +399,7 @@ def clip_tip_position(tpX, tpY, tpZ):
         tpZ = LEAP_MAX_Z
     return [tpX, tpY, tpZ] 
      
-
-
 # init_joint_positions()
+reset_time()
+perform_ccd()
 # perform_ccd() 
