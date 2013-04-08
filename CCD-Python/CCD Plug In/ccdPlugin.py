@@ -61,8 +61,10 @@ LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
 
 CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5,
-    'CURRENT_TIME': 1,                   #Current Animation time
-    'MAX_TIME': 100
+    'CURRENT_TIME': 0,                   #Current Animation time
+    'INITIAL_MAX_TIME': 100
+    'MAX_TIME': 100,
+    'MIN_TIME': 0,
 }
 
 
@@ -77,8 +79,6 @@ def open_command_port():
     #Otherwise open the port
     pm.commandPort(name=':6001')
 
-
-open_command_port()
 
 JOINTS = {
    # 'joint1': {
@@ -205,11 +205,14 @@ def increase_max_time():
 
 def reset_time(): 
     #Clear All the key frames for every joint
+    currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
     for jointKey in JOINTS: 
         print jointKey 
-        pm.cutKey(jointKey, time=(1, CONFIG['MAX_TIME']), option="keys")
+        pm.cutKey(jointKey, time=(1, currentMaxTime), option="keys")
     #pm.refresh(force=True)
-    CONFIG[TIME_KEY] = 1
+    CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
+    CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
+    pma.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
 
 #Projects a point on to the Sphere whose radius is the armLenght
 def project_point(point, sphereCenter, armLength):
@@ -406,6 +409,18 @@ def clip_tip_position(tpX, tpY, tpZ):
     return [tpX, tpY, tpZ] 
 
 
-init_joint_positions()
-reset_time()
-# perform_ccd() 
+#Main Loop for initialization
+def main():
+    #Close open ports & open our current port
+    open_command_port()
+    #Initialize all joint positions
+    init_joint_positions()
+    #Reset the animation time
+    reset_time()
+    #Perform CCD (for testing)
+    perform_ccd() 
+
+if __name__ == "__main__":
+    main()
+
+
