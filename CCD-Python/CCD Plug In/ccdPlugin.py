@@ -12,10 +12,6 @@ import pymel.core.animation as pma
 
 
 
-
-
-
-
 #Target point of interest - initial conditions
 #TP = [13.327005785798825, 5.933350084777719, 1.6255290651771213];
 #TARGET_POINT = Leap.Vector(TP[0],TP[1], TP[2])
@@ -62,9 +58,9 @@ LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
 CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5,
     'CURRENT_TIME': 0,                   #Current Animation time
-    'INITIAL_MAX_TIME': 100
+    'INITIAL_MAX_TIME': 100,
     'MAX_TIME': 100,
-    'MIN_TIME': 0,
+    'MIN_TIME': 0
 }
 
 
@@ -142,6 +138,236 @@ JOINTS = {
         'name': 'targetPoint'
     }
 }
+
+
+
+class Finger():
+    def __init__(self, mayaID, target=None, jointList=[]):
+        self.mayaID = mayaID
+        self.jointList = []
+        self.add_joints(jointList)
+        self.set_target(target)
+
+    
+
+    #Returns the output that is returned when using the print function
+    def __repr__(self):
+        return '<# FingerID:\'%s\' #%s #>' % (self.mayaID, self.jointList)
+    
+    #Returns the joint list associated with this finger
+    def get_joints(self):
+        return self.jointList
+
+    #Adds a joint to this finger's joint list - returns true is successful
+    def add_joint(self, joint):
+        if (isinstance(joint, Joint)):
+            self.jointList.append(joint)
+            self.update()
+            return True
+        else:
+            return False
+    #Adds a list of joints to this finger
+    def add_joints(self, joints):
+        successful = False
+        for joint in joints:
+            successful = successful and self.add_joint(joint)
+        return successful
+
+
+    #Sets a key frame on all of the joints for this finger at the current time
+    def add_keyframe(self, currentTime):
+        #Get the Current Time
+        #currentTime = get_current_time()
+        for joint in self.jointList:
+            joint.set_keyframe(currentTime)
+        #Increment the Global Time
+        increment_time()
+    
+    #Clears all key frames on the finger's joints from
+    def clear_keyframes(self, currentMaxTime):
+        for joint in self.jointList:
+            print joint
+            joint.reset_keyframes(currentMaxTime)
+
+    #Sets the target object that is in maya for this finger
+    def set_target(self, target):
+        if (isinstance(target, Joint)):
+            self.target = target
+            self.hasTarget = True
+        else:
+            self.target = None
+            self.hasTarget = False
+        #Update all joint and target attributes
+        self.update()
+
+    #Sets the target position for the finger 
+    def set_target_position(self, x,y,z):
+        print "set target pos?"
+
+    def has_target(self):
+        return self.hasTarget
+
+    def get_target_position(self):
+        if (self.has_target()):
+            return self.target.get_position()
+        else:
+            print 'No target defined'
+            #TODO: REturn the end effector's current position
+            return Leap.Vector(0,0,0)
+    
+    #Updates all joint and target positiings for this finger 
+    def update(self):
+        #Update all joints
+        for joint in self.jointList:
+            joint.update()
+        #Update the Target
+        if self.has_target():
+            self.target.update()
+            #TODO: Project target position to be in range of arm Length
+            print 'unimplemented'
+            # #PRoject to be in range of the armLength
+            # armLength = 20 #sum of the arm lengths
+            # basePtKey = BASE_KEY
+            # sphereCenter = JOINTS[basePtKey]['pos']
+            # JOINTS[TARGET_KEY]['pos'] = project_point(TARGET_POINT, sphereCenter, armLength)
+            # #print TARGET_POINT
+    def perform_ccd(self):
+        #No ccd if no target
+        if (self.target is None):
+            return False
+
+        else:
+            return True
+
+
+
+############################################################
+########################### JOINT ##########################
+############################################################
+class Joint():
+    #Create a joint
+    def __init__(self, mayaID, child=None, parent=None, name=None):
+        self.mayaID = mayaID
+        self.pos = Leap.Vector(0,0,0)
+        self.rot = Leap.Vector(0,0,0)
+        self.parent = parent
+        self.child = child
+        self.name = name
+        self.update()
+
+    #Returns the output that is returned when using the print function
+    def __repr__(self):
+        return 'JointID:\'%s\'' % (self.mayaID)
+
+    #Retrieves updated position and rotation information from Maya
+    def update(self):
+        #Get position of joint in Maya (world-space)
+        mayaPos = pm.xform(self.mayaID, query=True, ws=True, t=True) #//in an array [x,y,z]
+        
+        #Update position reference for joint
+        self.pos = Leap.Vector(mayaPos[0], mayaPos[1], mayaPos[2])
+        
+        #Get Rotatation of joint in Maya
+        mayaRot = pm.xform(key, query=True, rotation=True)   
+        self.rot = Leap.Vector(mayaRot[0], mayaRot[1], mayaRot[2])
+
+    def init_position(self):
+
+        print 'unimplemented'
+
+    #Set the position of this joint in Maya 
+    def set_position(self):
+        print 'unimplemented pos'
+
+    def set_parent(self, parent=None):
+        self.parent = parent
+
+    #Set the rotation on this joint in Maya
+    def set_rotation(self):
+        print 'unimplemented rot'
+
+    #Adds an animation key frame to the joint at at it current attributes
+    def set_keyframe(self, currentTime):
+        pma.setKeyframe(self.mayaID, currentTime)
+
+    def clear_keyframes(self, currentMaxTime):
+        pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
+
+    #Get the position of this joint in Maya 
+    def get_position(self):
+        return self.pos
+
+    #Return this joint's current position in World Space
+    def get_rot(self):
+        return self.rot
+
+    #Return this joints current rotation
+    def get_parent(self):
+        return self.parent
+
+    #Return the child joint of this joint
+    def get_child(self):
+        return self.child
+
+    #Does this joint has a child joint
+    def has_child(self):
+        if self.child is None:
+            return False
+        else:
+            return True
+
+
+############################################################
+################## END EFFECTOR (JOINT) ####################
+############################################################
+
+class EndEffector(Joint):
+    
+    def __init__(self, mayaID, parent=None, name=None):
+        super(EndEffector, self).__init__(mayaID)
+
+    #Returns the output that is returned when using the print function
+    def __repr__(self):
+        return 'EndEffectorID: %s' % (self.mayaID)
+
+
+############################################################
+################## TARGET (JOINT/SPHERE) ###################
+############################################################
+
+class Target(Joint):
+    
+    def __init__(self, mayaID):
+        super(Target, self).__init__(mayaID)
+    #Returns the output that is returned when using the print function
+    def __repr__(self):
+        return  '<# TargetID: \' %s \'' % (self.mayaID)
+
+
+
+############################################################
+####################### FINGER TEST ########################
+############################################################
+def FINGER_TEST():
+    finger1 = Finger('R-IndexFinger')
+    print finger1
+    j6 = Joint('joint6')
+    j7 = Joint('joint7')
+    j8 = Joint('joint8')
+    j9 = Joint('joint9')
+
+    finger1.add_joints([j6,j7,j8,j9])
+    print finger1
+
+
+
+FINGER_TEST()
+
+############################################################
+############################################################
+############################################################
+
+
 MIN_JOINT_ID = 6 #1
 MAX_JOINT_ID = 8 #4
 JOINT_CHAIN_LENGTH = 20
@@ -207,8 +433,8 @@ def reset_time():
     #Clear All the key frames for every joint
     currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
     for jointKey in JOINTS: 
-        print jointKey 
-        pm.cutKey(jointKey, time=(1, currentMaxTime), option="keys")
+        #print jointKey 
+        pm.cutKey(jointKey, time=(1, currentMaxTime), option='keys')
     #pm.refresh(force=True)
     CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
     CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
@@ -259,7 +485,7 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
 
     while (distance > DISTANCE_THRESHOLD and iterations > 0):
         #setKeyframe
-        print get_current_time()
+        #print get_current_time()
         set_animation_keyframe()
         #print distance
         if (distance > 1):
@@ -375,6 +601,7 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
     
     #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
     lengthRatio = JOINT_CHAIN_LENGTH*lengthRatio
+    print JOINT_CHAIN_LENGTH
     #Create a vector from the coordinates
     updatedPos = (Leap.Vector (tpX, tpY, tpZ))
     #Apply the joint chain length to the vector of motion & add the base position
@@ -409,18 +636,99 @@ def clip_tip_position(tpX, tpY, tpZ):
     return [tpX, tpY, tpZ] 
 
 
+
+def calculate_joint_chain_length():
+    #initialize all joint positions
+    init_joint_positions()
+
+
+    wristPos =  palmPos = pm.xform('hand4_joint1', query=True, ws=True, t=True)
+    wristPos =  Leap.Vector(wristPos[0], wristPos[1], wristPos[2])
+    #print wristPos
+
+    palmPos = pm.xform('hand4_joint1|joint2', query=True, ws=True, t=True) #//in an array [x,y,z]
+    palmPos =  Leap.Vector(palmPos[0], palmPos[1], palmPos[2])
+    #print palmPos
+
+    #Get initial palm-to-finger length
+    isFirst = True
+
+    #Sum of Segment lengths
+    chainLength = 0;
+
+    #Include palm and wrist vect mag
+    chainLength = (palmPos - wristPos).magnitude
+    #print chainLength
+
+    #Now get length of vectors between two joints
+    for index in range(MIN_JOINT_ID, MAX_JOINT_ID):
+
+        firstKey = index
+        secondKey = index +1
+
+        firstJoint = JOINTS['joint'+str(firstKey)]
+        secondJoint = JOINTS['joint'+str(secondKey)]
+
+        #Get the segment length between the two joints
+        jointSegment = secondJoint['pos'] - firstJoint['pos']
+
+        segmentLength = jointSegment.magnitude
+
+        if (isFirst):
+            #print 'isFirst'
+            jointSegment = firstJoint['pos']-palmPos
+            segmentLength += jointSegment.magnitude
+            isFirst = False
+
+        #print segmentLength
+        #Add to the chainLength
+        chainLength += segmentLength
+    #Set our new Chain length
+    JOINT_CHAIN_LENGTH = chainLength
+    #print chainLength
+
+    #Add an extension so the mapping length is not directly on the sphere
+    chainExtension = 5;
+    JOINT_CHAIN_LENGTH +=  chainExtension
+
 #Main Loop for initialization
 def main():
     #Close open ports & open our current port
     open_command_port()
+    #init the Joint chain length
+    calculate_joint_chain_length()
+
     #Initialize all joint positions
     init_joint_positions()
+
     #Reset the animation time
     reset_time()
+
     #Perform CCD (for testing)
     perform_ccd() 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    print 'main!'
+    #main()
+
+#Close open ports & open our current port
+open_command_port()
+#init the Joint chain length
+calculate_joint_chain_length()
+
+#Initialize all joint positions
+init_joint_positions()
+
+#Reset the animation time
+reset_time()
+
+#Perform CCD (for testing)
+perform_ccd() 
+
+
+
+
+
+
 
 
