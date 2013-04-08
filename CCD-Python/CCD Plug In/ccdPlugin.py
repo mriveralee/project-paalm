@@ -157,6 +157,8 @@ def init_joint_positions():
         JOINTS[key]['base-pos'] = Leap.Vector(pos[0], pos[1], pos[2])
         JOINTS[key]['pos'] = Leap.Vector(pos[0], pos[1], pos[2])
 
+        #Set interpolation to be by rotation
+        #pm.rotationInterpolation( key+'_rotateX', convert='quaternion' )
         #Get Rotatation of joint
         rot = pm.xform(key, query=True, rotation=True)   
         JOINTS[key]['rot'] = Leap.Vector(rot[0], rot[1], rot[2])
@@ -202,8 +204,12 @@ def increase_max_time():
 
 
 def reset_time(): 
+    #Clear All the key frames for every joint
+    for jointKey in JOINTS: 
+        print jointKey 
+        pm.cutKey(jointKey, time=(1, CONFIG['MAX_TIME']), option="keys")
+    #pm.refresh(force=True)
     CONFIG[TIME_KEY] = 1
-    CONFIG['MAX_TIME'] = 100
 
 #Projects a point on to the Sphere whose radius is the armLenght
 def project_point(point, sphereCenter, armLength):
@@ -398,8 +404,8 @@ def clip_tip_position(tpX, tpY, tpZ):
     elif (tpZ > LEAP_MAX_Z):
         tpZ = LEAP_MAX_Z
     return [tpX, tpY, tpZ] 
-     
-# init_joint_positions()
+
+
+init_joint_positions()
 reset_time()
-perform_ccd()
 # perform_ccd() 
