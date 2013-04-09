@@ -141,6 +141,98 @@ JOINTS = {
 
 
 
+############################################################
+############################ HAND ##########################
+############################################################
+class Hand():
+    def __init(self, mayaID, fingerList=[], palm=None, wrist=None):
+        self.mayaID = mayaID
+        self.addFingers(fingerList)
+        self.hasWrist = False
+        self.hasPalm = False
+        self.set_wrist(wrist)
+        self.set_palm(palm)
+
+    #Returns the output that is returned when using the print function
+    def __str__(self):
+        return '<# HandID:\'%s\' # %s #>' % (self.mayaID, self.fingerList)
+    
+    def __repr__(self):
+        return self.__str__()
+
+    #Adds a list of fingers to this hand
+    def add_fingers(self, fingerList):
+        success = True
+        for finger in fingerList:
+            success = self.addFinger(finger) and success
+        return success
+
+    #Adds a finger to this hand
+    def add_finger(self, finger):
+        if (isinstance(finger, Joint)):
+            self.fingerList.append(finger)
+            return True
+        else:
+            return False
+
+    #Sets the wrist on the hand
+    def set_wrist(self, wrist):
+        if (isinstance(wrist, Joint)):
+            self.wrist = wrist
+            self.hasWrist = True
+        else:
+            self.hasWrist = False
+    
+    #Returns true if this hand has a wrist
+    def has_wrist(self):
+        return self.hasWrist
+
+    #Sets the palm on the hand
+    def set_palm(self, palm):
+        if (isinstance(palm, Joint)):
+            self.palm = palm
+            self.hasPalm = True
+        else:
+            self.hasPalm = False
+
+    #Returns true if this hand has a palm
+    def has_palm(self):
+        return self.hasPalm
+
+    #Compute length between the palm and wrist
+    def calculate_palm_to_wrist_length(self):
+        if (self.has_palm() and self.has_wrist()):
+            palmToWristLength = (self.palm.get_position()-self.wrist.get_position()).magnitude
+            return palmToWristLength
+        else:
+            #No length
+            return 0
+
+    def perform_ccd(self):
+        #For each finger 
+        print 'unimplemented ccd for hand'
+        
+
+    #Set the target positions for their corresponding fingers by 
+    def update_target_positions(self, targetPositions):
+        #For each Target position perform CCD on that finger
+        for tp in targetPositions:
+            fingerIndex = tp['fingerIndex']
+            #Check if the finger is valid for this hand
+            if (fingerIndex < len(self.fingerList)):
+                #Get the finger corresponding to this index
+                finger = self.fingerList[fingerIndex]
+                #Set the target position for this finger
+                finger.set_target_position(tp)
+            else:
+                #Do nothing for that index
+                print 'Invalid finger index'
+
+
+
+############################################################
+########################### FINGER #########################
+############################################################
 class Finger():
     def __init__(self, mayaID, target=None, jointList=[]):
         self.mayaID = mayaID
@@ -163,6 +255,10 @@ class Finger():
     def get_joints(self):
         return self.jointList
 
+    #Returns the number of joints in the finger
+    def get_num_joints(self):
+        return len(self.get_joints())
+
     #Adds a joint to this finger's joint list - returns true is successful
     def add_joint(self, joint):
         #print isinstance(joint, Joint)
@@ -175,11 +271,11 @@ class Finger():
 
     #Adds a list of joints to this finger
     def add_joints(self, joints):
-        successful = True
+        success = True
         for joint in joints:
-            successful = self.add_joint(joint) and successful
+            success = self.add_joint(joint) and success
         self.calculate_length()
-        return successful
+        return success
 
 
     #Sets a key frame on all of the joints for this finger at the current time
@@ -225,6 +321,32 @@ class Finger():
             #TODO: REturn the end effector's current position
             return Leap.Vector(0,0,0)
     
+    def get_effector(self):
+        joints = self.get_joints()
+        numJoints = self.get_num_joints()
+        if (numJoints > 0):
+            return joints[numJoints-1]
+        else:
+            print 'No Effector!'
+            return None
+
+    def get_effector_position(self):
+        effector = self.get_effector()
+        if (effector is not None):
+            return effector.get_position()
+        else: 
+            print 'Cannot Get Effector Position of None!'
+            return None
+
+    def set_effector_position(self, position):
+        effector = get_effector()
+        if (effector is not None):
+            effector.set_position(position)
+            return True;
+        else:
+            print 'Cannot set Effector Position of None!'
+            return False
+
     #Updates all joint and target positiings for this finger 
     def update(self):
         #Update all joints
@@ -241,6 +363,15 @@ class Finger():
             # sphereCenter = JOINTS[basePtKey]['pos']
             # JOINTS[TARGET_KEY]['pos'] = project_point(TARGET_POINT, sphereCenter, armLength)
             # #print TARGET_POINT
+    
+    #Calculate the distance between the palm and the first joint of the finger
+    def calculate_palm_distance(palm):
+        numJoints = len(self.get_joints())
+        if (numJoints > 0):
+            palmDistance = (palm.get_position()-self.jointList[0]).magnitude
+            return palmDistance
+        else:
+            return 0
     #Gets the length of the finger with respect the segments between the ordered joints
     def get_length(self):
         return self.calculate_length()
@@ -269,7 +400,7 @@ class Finger():
         #print chainLength
 
         #Get the number of joints 
-        numJoints = len(self.jointList)
+        numJoints = self.get_num_joints()
         #Now get length of vectors between sequences of two joints. If we do not
         #Have a number of joints > 1, there can be no segments 
         if (numJoints > 1) :
@@ -307,14 +438,110 @@ class Finger():
         self.length = chainLength
         return chainLength
 
-    def perform_ccd(self):
+
+    #CCD algorithm - with a targetPos
+    # While distance from effector to target > threshold and numloops<max
+        #   Take current bone
+        #   Build vector V1 from bone pivot to effector
+        #   Build vector V2 from bone pivot to target
+        #   Get the angle between V1 and V2
+        #   Get the rotation direction
+        #   Apply a differential rotation to the current bone
+        #   If it is the base node then the new current bone is the last bone in the chain
+        #   Else the new current bone is the previous one in the chain
+    #End while
+    def perform_ccd(self, palmToWristLength=0):
         #No ccd if no target
-        if (self.target is None):
+        if (self.target is None) or (self.get_num_joints() < 2):
             return False
 
         else:
+            #Distance Threshold for ending the ccd
+            DISTANCE_THRESHOLD = 0.01
+            #Number of iterations to perform per finger
+            iterations = 90
+
+            #Update positions for all joints
+            self.update()
+
+            #Get the joints and the number of them
+            joints = self.get_joints()
+            numJoints = self.get_num_joints()
+
+            #Last joint is not the effector so second to last
+            currentJointNum = numJoints-2
+            maxJointNum = numJoints-1
+
+            #formerly perform_ccd(self,targetTipPos)
+            #Config bool that tells us if we should be incrementing jointnums from 1
+            #If false we decrement from the max joint joint
+
+            USE_INCREASE_JOINT_NUM = False
+            if USE_INCREASE_JOINT_NUM:
+                currentJointNum = 0
+
+            #Effector Position and the Target Position
+            effector = self.get_effector()
+            targetTipPos = self.get_target_position()
+            effectorPos = self.get_effector_position()
+
+            #Distance of the effector to the Target
+            distance = (targetTipPos - effectorPos).magnitude
+
+            while (distance > DISTANCE_THRESHOLD and iterations > 0):
+                #Set a Key Frame for the finger
+                self.add_keyframe(get_current_time())
+                #print distance
+
+                #Joint Angle Multiplier for scaling / smoothness
+                if (distance > 1):
+                    CONFIG['JOINT_ANGLE_MULTIPLIER'] = 1.0
+                else:
+                    CONFIG['JOINT_ANGLE_MULTIPLIER'] = 0.4
+
+                #Current Joint & Position
+                joint = joints[currentJointNum]
+
+                #Update our joint rotation based on the effector Position and the Target Effector Pos
+                joint.update_rotation(effectorPos, targetTipPos)
+                
+                #New Effector Position
+                effectorPos = self.get_effector_position()
+                
+                #Update our distance from the target Point
+                oldDistance = distance
+                distance = (targetTipPos - self.get_effector_position()).magnitude
+
+                #Check if we have only moved a minimal amount of distance 
+                if (Math.fabs(oldDistance-distance) < EPSILON):
+                    #Stop CCD
+                    break 
+                #Decrement Iteration
+                iterations = iterations - 1
+                
+
+                ############################################
+                ######### Keep Joint Num in Bounds #########
+                ############################################
+                if USE_INCREASE_JOINT_NUM:
+                    #Move to next joint closest to the TP
+                    currentJointNum = currentJointNum + 1
+                    if currentJointNum > MAX_JOINT_ID:
+                        #keep the joint nums in bounds
+                        currentJointNum = MIN_JOINT_ID
+                else:
+                    #Move onto next joint in the chain
+                    currentJointNum = currentJointNum - 1
+                    #Cycle look if jointNum goes out of bound
+                    if (currentJointNum < MIN_JOINT_ID):
+                        currentJointNum = MAX_JOINT_ID
+                ############################################
+                    #Update all positions of joints in this finger
+                    self.update()
+                    
             return True
 
+        
 
 
 ############################################################
@@ -350,9 +577,6 @@ class Joint():
         mayaRot = pm.xform(self.mayaID, query=True, rotation=True)   
         self.rot = Leap.Vector(mayaRot[0], mayaRot[1], mayaRot[2])
 
-    def init_position(self):
-
-        print 'unimplemented'
 
     #Set the position of this joint in Maya 
     def set_position(self):
@@ -371,6 +595,33 @@ class Joint():
 
     def clear_keyframes(self, currentMaxTime):
         pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
+
+    #Get Composite Matrix - include all rotation, translation values
+    def get_composite_matrix(self):
+        mVals = pm.xform(self.mayaID, query=True, matrix=True, ws=True)
+
+        #Construct matrix from values of our composite matrix
+        mat = [ [ float(mVals[0]),  float(mVals[1]),  float(mVals[2]), float(mVals[3])  ], 
+                [ float(mVals[4]),  float(mVals[5]),  float(mVals[6]), float(mVals[7])  ],
+                [ float(mVals[8]),  float(mVals[9]), float(mVals[10]), float(mVals[11]) ],
+                [ float(mVals[12]), float(mVals[13]), float(mVals[14]), float(mVals[15]) ]  ]
+
+        #Turn mat into a transformation Matrix
+        mat = dt.TransformationMatrix(dt.Matrix(mat))
+
+        return mat
+    #Set Composition Matrix 
+    def set_composite_matrix(self, mat):
+        #Convert into a maya matrix
+        mat = mat.asMatrix()                                   
+        matAsFloatTuple = ( mat.a00, mat.a01, mat.a02, mat.a03, 
+                            mat.a10, mat.a11, mat.a12, mat.a13,
+                            mat.a20, mat.a21, mat.a22, mat.a23,
+                            mat.a30, mat.a31, mat.a32, mat.a33
+                            )
+        #Set the composition matrix on the object
+        pm.xform(self.mayaID, ws=True, matrix=matAsFloatTuple) #Removed Euler euler=True because it was rotating about local axes
+        pm.refresh(force=True)
 
     #Get the position of this joint in Maya 
     def get_position(self):
@@ -394,6 +645,39 @@ class Joint():
             return False
         else:
             return True
+
+
+    #Computes an optimal rotation for this joint to point towards the targetPosition
+    #Applys the rotation via updating the composite matrix
+    def update_rotation(self, effectorPos, targetPos):
+        #Position of the joiny
+        jointPos = joint.get_position()
+
+        #The Two Vectors of Interest
+        V1 = (effectorPos-jointPos)
+        V2 = (targetPos-jointPos)
+       
+        #Get Axis & Angle - Returns vector and angle in degrees
+        axisAngle = pm.angleBetween(v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))            
+
+        #Make a quaternion from the axis and the angle
+        axis = dt.Vector(axisAngle[0], axisAngle[1], axisAngle[2])
+
+        #Convert Angle to Degrees
+        angle =  (axisAngle[3]*DEG_TO_RAD)
+
+        #Apply magic number to the joint to prevent moving too sharply to the targetPoint
+        angle *= CONFIG['JOINT_ANGLE_MULTIPLIER'] #For radian 
+        rotQuat = dt.Quaternion(angle, axis)
+
+        #Get current matrix - CURRENTLY DOES NOT INCORPORATE SCALE (cutting off values)
+        mat = self.get_composite_matrix()
+
+        #Apply Rotation to the matrix
+        mat.addRotationQuaternion(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w, space='world')   #object space
+        
+        #Set the composite matrix for the joint
+        self.set_composite_matrix(mat)
 
 
 ############################################################
