@@ -144,33 +144,41 @@ JOINTS = {
 class Finger():
     def __init__(self, mayaID, target=None, jointList=[]):
         self.mayaID = mayaID
+        self.length = 0
+        self.hasTarget = False
         self.jointList = []
         self.add_joints(jointList)
         self.set_target(target)
+        self.calculate_length()
 
-    
 
     #Returns the output that is returned when using the print function
-    def __repr__(self):
-        return '<# FingerID:\'%s\' #%s #>' % (self.mayaID, self.jointList)
+    def __str__(self):
+        return '<# FingerID:\'%s\' # %s #>' % (self.mayaID, self.jointList)
     
+    def __repr__(self):
+        return self.__str__()
+
     #Returns the joint list associated with this finger
     def get_joints(self):
         return self.jointList
 
     #Adds a joint to this finger's joint list - returns true is successful
     def add_joint(self, joint):
+        #print isinstance(joint, Joint)
         if (isinstance(joint, Joint)):
             self.jointList.append(joint)
-            self.update()
+            self.calculate_length()
             return True
         else:
             return False
+
     #Adds a list of joints to this finger
     def add_joints(self, joints):
-        successful = False
+        successful = True
         for joint in joints:
-            successful = successful and self.add_joint(joint)
+            successful = self.add_joint(joint) and successful
+        self.calculate_length()
         return successful
 
 
@@ -186,7 +194,7 @@ class Finger():
     #Clears all key frames on the finger's joints from
     def clear_keyframes(self, currentMaxTime):
         for joint in self.jointList:
-            print joint
+            #print joint
             joint.reset_keyframes(currentMaxTime)
 
     #Sets the target object that is in maya for this finger
@@ -199,9 +207,11 @@ class Finger():
             self.hasTarget = False
         #Update all joint and target attributes
         self.update()
+        self.calculate_length()
 
     #Sets the target position for the finger 
     def set_target_position(self, x,y,z):
+        self.calculate_length()
         print "set target pos?"
 
     def has_target(self):
@@ -231,6 +241,72 @@ class Finger():
             # sphereCenter = JOINTS[basePtKey]['pos']
             # JOINTS[TARGET_KEY]['pos'] = project_point(TARGET_POINT, sphereCenter, armLength)
             # #print TARGET_POINT
+    #Gets the length of the finger with respect the segments between the ordered joints
+    def get_length(self):
+        return self.calculate_length()
+
+    #Calculate the length of the finger
+    def calculate_length(self):
+        self.update()
+        # wristPos =  palmPos = pm.xform('hand4_joint1', query=True, ws=True, t=True)
+        # wristPos =  Leap.Vector(wristPos[0], wristPos[1], wristPos[2])
+        # #print wristPos
+
+        # palmPos = pm.xform('hand4_joint1|joint2', query=True, ws=True, t=True) #//in an array [x,y,z]
+        # palmPos =  Leap.Vector(palmPos[0], palmPos[1], palmPos[2])
+        # #print palmPos
+
+        # #Get initial palm-to-finger length
+        # isFirst = True
+
+        # #Sum of Segment lengths
+        # chainLength = 0;
+
+        # #Include palm and wrist vect mag
+        # chainLength = (palmPos - wristPos).magnitude
+
+        chainLength = 0 #### REMOVE THIS AND UNCOMMENT TOP when ready
+        #print chainLength
+
+        #Get the number of joints 
+        numJoints = len(self.jointList)
+        #Now get length of vectors between sequences of two joints. If we do not
+        #Have a number of joints > 1, there can be no segments 
+        if (numJoints > 1) :
+            print 'Length > 1 ! '
+            for index in range(0, numJoints-1):
+                #print index
+                firstKey = index
+                secondKey = index +1
+
+                firstJoint = self.jointList[index]
+                secondJoint = self.jointList[index+1]
+
+                print str(firstJoint) + ' - ' + str(secondJoint)
+                #Get the segment length between the two joints
+                fingerSegment = secondJoint.get_position() - firstJoint.get_position()
+                #print fingerSegment
+                segmentLength = fingerSegment.magnitude
+                print segmentLength
+                #We need to include the firstJoint and its connect to the palm
+                # if (isFirst):
+                #     #print 'isFirst'
+                #     jointSegment = firstJoint.get_position-palmPos
+                #     segmentLength += jointSegment.magnitude
+                #     isFirst = False
+
+                #print segmentLength
+                #Add to the chainLength
+                chainLength += segmentLength
+    
+        #Add an extension so the mapping length is not directly on the sphere
+        # chainExtension = 5;
+        # JOINT_CHAIN_LENGTH +=  chainExtension
+
+        #Set our new Chain length
+        self.length = chainLength
+        return chainLength
+
     def perform_ccd(self):
         #No ccd if no target
         if (self.target is None):
@@ -256,8 +332,11 @@ class Joint():
         self.update()
 
     #Returns the output that is returned when using the print function
-    def __repr__(self):
+    def __str__(self):
         return 'JointID:\'%s\'' % (self.mayaID)
+
+    def __repr__(self):
+        return self.__str__()
 
     #Retrieves updated position and rotation information from Maya
     def update(self):
@@ -268,7 +347,7 @@ class Joint():
         self.pos = Leap.Vector(mayaPos[0], mayaPos[1], mayaPos[2])
         
         #Get Rotatation of joint in Maya
-        mayaRot = pm.xform(key, query=True, rotation=True)   
+        mayaRot = pm.xform(self.mayaID, query=True, rotation=True)   
         self.rot = Leap.Vector(mayaRot[0], mayaRot[1], mayaRot[2])
 
     def init_position(self):
@@ -327,8 +406,11 @@ class EndEffector(Joint):
         super(EndEffector, self).__init__(mayaID)
 
     #Returns the output that is returned when using the print function
-    def __repr__(self):
+    def __str__(self):
         return 'EndEffectorID: %s' % (self.mayaID)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 ############################################################
@@ -339,10 +421,13 @@ class Target(Joint):
     
     def __init__(self, mayaID):
         super(Target, self).__init__(mayaID)
+    
     #Returns the output that is returned when using the print function
-    def __repr__(self):
+    def __str__(self):
         return  '<# TargetID: \' %s \'' % (self.mayaID)
 
+    def __repr__(self):
+        return self.__str__()
 
 
 ############################################################
@@ -358,8 +443,11 @@ def FINGER_TEST():
 
     finger1.add_joints([j6,j7,j8,j9])
     print finger1
+    #for joint in finger1.get_joints():
+        #print joint.get_position()
 
-
+    print 'GET LENGTH CALL' + str(finger1.get_length())
+    print "NEW LENGTH: " +str(finger1.length)
 
 FINGER_TEST()
 
@@ -657,27 +745,28 @@ def calculate_joint_chain_length():
     chainLength = 0;
 
     #Include palm and wrist vect mag
-    chainLength = (palmPos - wristPos).magnitude
+    #chainLength = (palmPos - wristPos).magnitude
+
     #print chainLength
 
     #Now get length of vectors between two joints
-    for index in range(MIN_JOINT_ID, MAX_JOINT_ID):
+    for index in range(MIN_JOINT_ID, MAX_JOINT_ID+1):  #PLUS 1 BECAUSE MAX joint ID doesn't go to the EFFECTOR
 
         firstKey = index
         secondKey = index +1
 
         firstJoint = JOINTS['joint'+str(firstKey)]
         secondJoint = JOINTS['joint'+str(secondKey)]
-
+        #print 'joint'+str(firstKey) + '-' + 'joint'+str(secondKey)
         #Get the segment length between the two joints
         jointSegment = secondJoint['pos'] - firstJoint['pos']
 
         segmentLength = jointSegment.magnitude
-
+        #print segmentLength
         if (isFirst):
             #print 'isFirst'
-            jointSegment = firstJoint['pos']-palmPos
-            segmentLength += jointSegment.magnitude
+            #jointSegment = firstJoint['pos']-palmPos
+            #segmentLength += jointSegment.magnitude
             isFirst = False
 
         #print segmentLength
@@ -686,10 +775,10 @@ def calculate_joint_chain_length():
     #Set our new Chain length
     JOINT_CHAIN_LENGTH = chainLength
     #print chainLength
-
+    print 'FROM OLD CL!:' +str(chainLength)
     #Add an extension so the mapping length is not directly on the sphere
     chainExtension = 5;
-    JOINT_CHAIN_LENGTH +=  chainExtension
+    #JOINT_CHAIN_LENGTH +=  chainExtension
 
 #Main Loop for initialization
 def main():
@@ -725,10 +814,4 @@ reset_time()
 #Perform CCD (for testing)
 perform_ccd() 
 
-
-
-
-
-
-
-
+##################### END SCRIPT #######################
