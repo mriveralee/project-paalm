@@ -10,17 +10,18 @@ import pymel.core.datatypes as dt
 import pymel.core.animation as pma 
 
 
-
-#Joints and Positions of finger
-TIME_KEY = 'CURRENT_TIME'
-EFFECTOR_KEY = 'joint9'
-TARGET_KEY = 'targetPoint'
-BASE_KEY = 'joint6'#'joint1'
+#CONSTANTS
 DEG_TO_RAD = Math.pi/180
 EPSILON = 0.001
 
-#Mapping Range of Maya CS
 
+
+#Joints and Positions of finger
+TIME_KEY = 'CURRENT_TIME'
+TARGET_KEY = 'targetPoint'
+BASE_KEY = 'joint6'#'joint1'
+
+#Mapping Range of Maya CS
 MAYA_MAX_X = 20
 MAYA_MIN_X = -20
 MAYA_RANGE_X = MAYA_MAX_X-MAYA_MIN_X
@@ -223,6 +224,7 @@ class Finger(object):
                 #Clear All the key frames for every joint
         #pm.refresh(force=True)
         if (self.has_target()):
+            self.target.clear_keyframes(currentMaxTime)
 
 
         CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
@@ -448,7 +450,9 @@ class Finger(object):
                 joint.update_rotation(effectorPos, targetTipPos)
                 
                 #New Effector Position
+                effector.update()
                 effectorPos = effector.get_position()
+
             
                 #Update our distance from the target Point
                 oldDistance = distance
@@ -458,6 +462,7 @@ class Finger(object):
                 if (Math.fabs(oldDistance-distance) < EPSILON):
                     #Stop CCD
                     break 
+
                 #Decrement Iteration
                 iterations = iterations - 1
                 
@@ -480,7 +485,7 @@ class Finger(object):
                 ############################################
 
                     #Update all positions of joints in this finger
-                    self.update()
+                self.update()
                     
             return True
 
@@ -513,15 +518,14 @@ class Joint(object):
         mayaRot = pm.xform(self.mayaID, query=True, rotation=True)   
         self.rot = Leap.Vector(mayaRot[0], mayaRot[1], mayaRot[2])
 
+
     #Get the position of this joint in Maya 
     def get_position(self):
-        self.update()
         return self.pos
 
     #Set the position of this joint in Maya 
     def set_position(self, position):
         self.pos = position
-        self.update()
         return True
 
     #Set the rotation on this joint in Maya
@@ -717,7 +721,9 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
         tpZ = ((tpZ-LEAP_MIN_Z)/LEAP_RANGE_Z)*MAYA_RANGE_Z + MAYA_MIN_Z
     
     #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
+    JOINT_CHAIN_LENGTH = 20
     lengthRatio = JOINT_CHAIN_LENGTH*lengthRatio
+    print 'Length ratio: %i' % lengthRatio
     
     #print JOINT_CHAIN_LENGTH
     #Create a vector from the coordinates
@@ -727,10 +733,10 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
     updatedPos = updatedPos*lengthRatio + finger1.get_joints()[0].get_position()
     #print updatedPos
     #Note: relative adds translation;absolute sets
-    finger1.set_target_position(updatedPos)
+    FINGERS[0].set_target_position(updatedPos)
 
     #Perform CCD now :)
-    finger1.perform_ccd()
+    FINGERS[0].perform_ccd()
     pm.refresh(force=True)
 
 def clip_tip_position(tpX, tpY, tpZ):
@@ -833,7 +839,7 @@ if __name__ == '__main__':
 #Close open ports & open our current port
 open_command_port()
 #init the Joint chain length
-calculate_joint_chain_length()
+#calculate_joint_chain_length()
 
 #Initialize all joint positions
 #init_joint_positions()
@@ -845,41 +851,43 @@ calculate_joint_chain_length()
 # perform_ccd() 
 
 
+
+
 ############################################################
 ####################### FINGER TEST ########################
 ############################################################
-#def FINGER_TEST():
-finger1 = Finger('R-IndexFinger')
 
-j6 = Joint('joint6')
-j7 = Joint('joint7')
-j8 = Joint('joint8')
-j9 = Joint('joint9')
+FINGERS = []
+FINGER_TEST()
 
-tp = Target('targetPoint')
+def FINGER_TEST():
+    finger1 = Finger('R-IndexFinger')
+
+    j6 = Joint('joint6')
+    j7 = Joint('joint7')
+    j8 = Joint('joint8')
+    j9 = Joint('joint9')
+
+    tp = Target('targetPoint')
 
 
-#Add ordered joint chain to finger 1
-finger1.add_joints([j6,j7,j8,j9])
+    #Add ordered joint chain to finger 1
+    finger1.add_joints([j6,j7,j8,j9])
 
-#Set the target for the finger
-finger1.set_target(tp)
+    #Set the target for the finger
+    finger1.set_target(tp)
 
-#Clear all set key frames
-finger1.clear_keyframes()
+    #Clear all set key frames
+    finger1.clear_keyframes()
 
-#finger1.perform_ccd()
+    FINGERS.append(finger1)
+
+    finger1.perform_ccd()
 
 # print 'GET LENGTH CALL' + str(finger1.get_length())
 # print "NEW LENGTH: " +str(finger1.length)
-
-
-
 ############################################################
 ############################################################
 ############################################################
-
-
-
 
 ##################### END SCRIPT #######################
