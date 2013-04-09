@@ -525,6 +525,7 @@ class Joint(object):
 
     #Set the position of this joint in Maya 
     def set_position(self, position):
+        pm.xform(self.mayaID, t=(position[0],position[1], position[2])), ws=True)
         self.pos = position
         return True
 
@@ -636,6 +637,8 @@ class Target(Joint):
     def __repr__(self):
         return self.__str__()
 
+
+
     def update(self):
         #Get the Current Target Position
         mayaPos = pm.xform(self.mayaID, query=True, t=True, ws=True)
@@ -730,7 +733,7 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
     updatedPos = Leap.Vector(tpX, tpY, tpZ)
     #Apply the joint chain length to the vector of motion & add the base position
     
-    updatedPos = updatedPos*lengthRatio + finger1.get_joints()[0].get_position()
+    updatedPos = updatedPos*lengthRatio + FINGERS[0].get_joints()[0].get_position()
     #print updatedPos
     #Note: relative adds translation;absolute sets
     FINGERS[0].set_target_position(updatedPos)
@@ -867,7 +870,6 @@ def FINGER_TEST():
     j7 = Joint('joint7')
     j8 = Joint('joint8')
     j9 = Joint('joint9')
-
     tp = Target('targetPoint')
 
 
