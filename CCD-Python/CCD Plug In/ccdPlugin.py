@@ -222,6 +222,9 @@ class Finger(object):
             joint.clear_keyframes(currentMaxTime)
                 #Clear All the key frames for every joint
         #pm.refresh(force=True)
+        if (self.has_target()):
+
+
         CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
         CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
         print CONFIG['MAX_TIME']
@@ -261,9 +264,9 @@ class Finger(object):
             return Leap.Vector(0,0,0)
     #Sets the target position for the finger 
     def set_target_position(self, position):
-        if (self.hasTarget):
+        if (self.has_target()):
             self.target.set_position(position)
-            self.calculate_length()
+            #self.calculate_length()
             return True
         else:
             print "Cannot Set Target Position!"
@@ -427,6 +430,7 @@ class Finger(object):
 
             #CCD Main Loop
             while (distance > DISTANCE_THRESHOLD and iterations > 0):
+
                 #Set a Key Frame for the finger
                 self.set_keyframe(get_current_time())
                 #print distance
@@ -692,7 +696,7 @@ def reset_time():
     pma.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
 
 
-
+JOINT_CHAIN_LENGTH = 20
 #Interfacing with a command port thatsend tip position updates
 def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
     NOT_USE_DIRECTION = False
@@ -714,18 +718,20 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
     
     #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
     lengthRatio = JOINT_CHAIN_LENGTH*lengthRatio
-    print JOINT_CHAIN_LENGTH
+    
+    #print JOINT_CHAIN_LENGTH
     #Create a vector from the coordinates
     updatedPos = Leap.Vector(tpX, tpY, tpZ)
     #Apply the joint chain length to the vector of motion & add the base position
     
-    updatedPos = updatedPos*lengthRatio + fingers1.get_joints()[0].get_position()
+    updatedPos = updatedPos*lengthRatio + finger1.get_joints()[0].get_position()
     #print updatedPos
     #Note: relative adds translation;absolute sets
     finger1.set_target_position(updatedPos)
 
     #Perform CCD now :)
     finger1.perform_ccd()
+    pm.refresh(force=True)
 
 def clip_tip_position(tpX, tpY, tpZ):
     #Clip X-Comp
@@ -745,7 +751,8 @@ def clip_tip_position(tpX, tpY, tpZ):
         tpZ = LEAP_MAX_Z
     return [tpX, tpY, tpZ] 
 
-
+MIN_JOINT_ID = 6
+MAX_JOINT_ID = 9
 
 def calculate_joint_chain_length():
     #initialize all joint positions
@@ -772,34 +779,34 @@ def calculate_joint_chain_length():
     #print chainLength
 
     #Now get length of vectors between two joints
-    for index in range(MIN_JOINT_ID, MAX_JOINT_ID+1):  #PLUS 1 BECAUSE MAX joint ID doesn't go to the EFFECTOR
+    # for index in range(MIN_JOINT_ID, MAX_JOINT_ID+1):  #PLUS 1 BECAUSE MAX joint ID doesn't go to the EFFECTOR
 
-        firstKey = index
-        secondKey = index +1
+    #     firstKey = index
+    #     secondKey = index +1
 
-        firstJoint = JOINTS['joint'+str(firstKey)]
-        secondJoint = JOINTS['joint'+str(secondKey)]
-        #print 'joint'+str(firstKey) + '-' + 'joint'+str(secondKey)
-        #Get the segment length between the two joints
-        jointSegment = secondJoint['pos'] - firstJoint['pos']
+    #     # firstJoint = JOINTS['joint'+str(firstKey)]
+    #     # secondJoint = JOINTS['joint'+str(secondKey)]
+    #     #print 'joint'+str(firstKey) + '-' + 'joint'+str(secondKey)
+    #     #Get the segment length between the two joints
+    #     jointSegment = secondJoint['pos'] - firstJoint['pos']
 
-        segmentLength = jointSegment.magnitude
-        #print segmentLength
-        if (isFirst):
-            #print 'isFirst'
-            #jointSegment = firstJoint['pos']-palmPos
-            #segmentLength += jointSegment.magnitude
-            isFirst = False
+    #     segmentLength = jointSegment.magnitude
+    #     #print segmentLength
+    #     if (isFirst):
+    #         #print 'isFirst'
+    #         #jointSegment = firstJoint['pos']-palmPos
+    #         #segmentLength += jointSegment.magnitude
+    #         isFirst = False
 
-        #print segmentLength
-        #Add to the chainLength
-        chainLength += segmentLength
-    #Set our new Chain length
-    JOINT_CHAIN_LENGTH = chainLength
-    #print chainLength
-    print 'FROM OLD CL!:' +str(chainLength)
-    #Add an extension so the mapping length is not directly on the sphere
-    chainExtension = 5;
+    #     #print segmentLength
+    #     #Add to the chainLength
+    #     chainLength += segmentLength
+    # #Set our new Chain length
+    # JOINT_CHAIN_LENGTH = chainLength
+    # #print chainLength
+    # print 'FROM OLD CL!:' +str(chainLength)
+    # #Add an extension so the mapping length is not directly on the sphere
+    # chainExtension = 5;
     #JOINT_CHAIN_LENGTH +=  chainExtension
 
 #Main Loop for initialization

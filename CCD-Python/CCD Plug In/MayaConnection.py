@@ -99,6 +99,7 @@ class MayaConnection():
     def send_tip_position_to_maya(self, tpX, tpY, tpZ, lengthRatio):
         command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+","+str(lengthRatio)+")\")\n"
         self.maya.send(command)
+        #print command
 #####
 
 

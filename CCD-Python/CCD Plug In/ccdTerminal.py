@@ -18,7 +18,7 @@ maya = MayaConnection.MayaConnection(MAYA_PORT)
 #Demos
 IS_TRACKING_DEMO = True
 MAYA_EFFECTOR_LENGTH = 1
-FRAME_SLEEP_TIME = 0.7
+FRAME_SLEEP_TIME = 0.2
 
 
 
