@@ -279,7 +279,7 @@ class Finger():
 
 
     #Sets a key frame on all of the joints for this finger at the current time
-    def add_keyframe(self, currentTime):
+    def set_keyframe(self, currentTime):
         #Get the Current Time
         #currentTime = get_current_time()
         for joint in self.jointList:
@@ -291,7 +291,7 @@ class Finger():
     def clear_keyframes(self, currentMaxTime):
         for joint in self.jointList:
             #print joint
-            joint.reset_keyframes(currentMaxTime)
+            joint.clear_keyframes(currentMaxTime)
 
     #Sets the target object that is in maya for this finger
     def set_target(self, target):
@@ -331,8 +331,11 @@ class Finger():
             return None
 
     def get_effector_position(self):
+        print 'getting that position!'
         effector = self.get_effector()
+
         if (effector is not None):
+            print 'getting that position!'
             return effector.get_position()
         else: 
             print 'Cannot Get Effector Position of None!'
@@ -356,7 +359,7 @@ class Finger():
         if self.has_target():
             self.target.update()
             #TODO: Project target position to be in range of arm Length
-            print 'unimplemented'
+            #print 'unimplemented'
             # #PRoject to be in range of the armLength
             # armLength = 20 #sum of the arm lengths
             # basePtKey = BASE_KEY
@@ -404,7 +407,6 @@ class Finger():
         #Now get length of vectors between sequences of two joints. If we do not
         #Have a number of joints > 1, there can be no segments 
         if (numJoints > 1) :
-            print 'Length > 1 ! '
             for index in range(0, numJoints-1):
                 #print index
                 firstKey = index
@@ -413,12 +415,12 @@ class Finger():
                 firstJoint = self.jointList[index]
                 secondJoint = self.jointList[index+1]
 
-                print str(firstJoint) + ' - ' + str(secondJoint)
+                #print str(firstJoint) + ' - ' + str(secondJoint)
                 #Get the segment length between the two joints
                 fingerSegment = secondJoint.get_position() - firstJoint.get_position()
                 #print fingerSegment
                 segmentLength = fingerSegment.magnitude
-                print segmentLength
+               # print segmentLength
                 #We need to include the firstJoint and its connect to the palm
                 # if (isFirst):
                 #     #print 'isFirst'
@@ -488,11 +490,12 @@ class Finger():
             #Distance of the effector to the Target
             distance = (targetTipPos - effectorPos).magnitude
 
+            #CCD Main Loop
             while (distance > DISTANCE_THRESHOLD and iterations > 0):
                 #Set a Key Frame for the finger
-                self.add_keyframe(get_current_time())
+                self.set_keyframe(get_current_time())
                 #print distance
-
+                print 'add key frame after'
                 #Joint Angle Multiplier for scaling / smoothness
                 if (distance > 1):
                     CONFIG['JOINT_ANGLE_MULTIPLIER'] = 1.0
@@ -503,14 +506,16 @@ class Finger():
                 joint = joints[currentJointNum]
 
                 #Update our joint rotation based on the effector Position and the Target Effector Pos
+                print 'update rot pos '
                 joint.update_rotation(effectorPos, targetTipPos)
                 
                 #New Effector Position
                 effectorPos = self.get_effector_position()
+            
                 
                 #Update our distance from the target Point
                 oldDistance = distance
-                distance = (targetTipPos - self.get_effector_position()).magnitude
+                distance = (targetTipPos - effectorPos).magnitude
 
                 #Check if we have only moved a minimal amount of distance 
                 if (Math.fabs(oldDistance-distance) < EPSILON):
@@ -568,8 +573,7 @@ class Joint():
     #Retrieves updated position and rotation information from Maya
     def update(self):
         #Get position of joint in Maya (world-space)
-        mayaPos = pm.xform(self.mayaID, query=True, ws=True, t=True) #//in an array [x,y,z]
-        
+        mayaPos = pm.xform(self.mayaID, query=True, ws=True, t=True) #//in an array [x,y,z] 
         #Update position reference for joint
         self.pos = Leap.Vector(mayaPos[0], mayaPos[1], mayaPos[2])
         
@@ -577,6 +581,9 @@ class Joint():
         mayaRot = pm.xform(self.mayaID, query=True, rotation=True)   
         self.rot = Leap.Vector(mayaRot[0], mayaRot[1], mayaRot[2])
 
+    #Get the position of this joint in Maya 
+    def get_position(self):
+        return self.pos
 
     #Set the position of this joint in Maya 
     def set_position(self):
@@ -591,7 +598,12 @@ class Joint():
 
     #Adds an animation key frame to the joint at at it current attributes
     def set_keyframe(self, currentTime):
-        pma.setKeyframe(self.mayaID, currentTime)
+        print self
+        print self.mayaID
+        print currentTime
+
+        pma.setKeyframe(self.mayaID, t=currentTime)
+        print 'set that frame!'
 
     def clear_keyframes(self, currentMaxTime):
         pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
@@ -623,9 +635,6 @@ class Joint():
         pm.xform(self.mayaID, ws=True, matrix=matAsFloatTuple) #Removed Euler euler=True because it was rotating about local axes
         pm.refresh(force=True)
 
-    #Get the position of this joint in Maya 
-    def get_position(self):
-        return self.pos
 
     #Return this joint's current position in World Space
     def get_rot(self):
@@ -651,7 +660,7 @@ class Joint():
     #Applys the rotation via updating the composite matrix
     def update_rotation(self, effectorPos, targetPos):
         #Position of the joiny
-        jointPos = joint.get_position()
+        jointPos = self.get_position()
 
         #The Two Vectors of Interest
         V1 = (effectorPos-jointPos)
@@ -714,30 +723,7 @@ class Target(Joint):
         return self.__str__()
 
 
-############################################################
-####################### FINGER TEST ########################
-############################################################
-def FINGER_TEST():
-    finger1 = Finger('R-IndexFinger')
-    print finger1
-    j6 = Joint('joint6')
-    j7 = Joint('joint7')
-    j8 = Joint('joint8')
-    j9 = Joint('joint9')
-
-    finger1.add_joints([j6,j7,j8,j9])
-    print finger1
-    #for joint in finger1.get_joints():
-        #print joint.get_position()
-
-    print 'GET LENGTH CALL' + str(finger1.get_length())
-    print "NEW LENGTH: " +str(finger1.length)
-
-FINGER_TEST()
-
-############################################################
-############################################################
-############################################################
+#############################################################
 
 
 MIN_JOINT_ID = 6 #1
@@ -1084,6 +1070,7 @@ if __name__ == '__main__':
     print 'main!'
     #main()
 
+
 #Close open ports & open our current port
 open_command_port()
 #init the Joint chain length
@@ -1096,6 +1083,42 @@ init_joint_positions()
 reset_time()
 
 #Perform CCD (for testing)
-perform_ccd() 
+# perform_ccd() 
+
+
+############################################################
+####################### FINGER TEST ########################
+############################################################
+def FINGER_TEST():
+    finger1 = Finger('R-IndexFinger')
+    print finger1
+    j6 = Joint('joint6')
+    j7 = Joint('joint7')
+    j8 = Joint('joint8')
+    j9 = Joint('joint9')
+
+    tp = Joint('targetPoint')
+
+    finger1.add_joints([j6,j7,j8,j9])
+    finger1.set_target(tp)
+
+    #print tp.get_position() 
+    #print finger1
+
+    finger1.perform_ccd()
+    #for joint in finger1.get_joints():
+        #print joint.get_position()
+
+    # print 'GET LENGTH CALL' + str(finger1.get_length())
+    # print "NEW LENGTH: " +str(finger1.length)
+
+FINGER_TEST()
+
+############################################################
+############################################################
+############################################################
+
+
+
 
 ##################### END SCRIPT #######################
