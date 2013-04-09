@@ -525,7 +525,7 @@ class Joint(object):
 
     #Set the position of this joint in Maya 
     def set_position(self, position):
-        pm.xform(self.mayaID, t=(position[0],position[1], position[2])), ws=True)
+        pm.xform(self.mayaID, t=(position[0],position[1], position[2]), ws=True)
         self.pos = position
         return True
 
