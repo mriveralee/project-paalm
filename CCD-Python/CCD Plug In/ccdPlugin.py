@@ -144,7 +144,7 @@ JOINTS = {
 ############################################################
 ############################ HAND ##########################
 ############################################################
-class Hand():
+class Hand(object):
     def __init(self, mayaID, fingerList=[], palm=None, wrist=None):
         self.mayaID = mayaID
         self.addFingers(fingerList)
@@ -233,7 +233,7 @@ class Hand():
 ############################################################
 ########################### FINGER #########################
 ############################################################
-class Finger():
+class Finger(object):
     def __init__(self, mayaID, target=None, jointList=[]):
         self.mayaID = mayaID
         self.length = 0
@@ -288,14 +288,21 @@ class Finger():
         increment_time()
     
     #Clears all key frames on the finger's joints from
-    def clear_keyframes(self, currentMaxTime):
+    def clear_keyframes(self, currentMaxTime=0):
+        currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
         for joint in self.jointList:
             #print joint
             joint.clear_keyframes(currentMaxTime)
+                #Clear All the key frames for every joint
+        #pm.refresh(force=True)
+        CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
+        CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
+        print CONFIG['MAX_TIME']
+        pma.playbackOptions(maxTime= CONFIG['MAX_TIME'])
 
     #Sets the target object that is in maya for this finger
     def set_target(self, target):
-        if (isinstance(target, Joint)):
+        if (isinstance(target, Target)):
             self.target = target
             self.hasTarget = True
         else:
@@ -331,11 +338,9 @@ class Finger():
             return None
 
     def get_effector_position(self):
-        print 'getting that position!'
         effector = self.get_effector()
 
         if (effector is not None):
-            print 'getting that position!'
             return effector.get_position()
         else: 
             print 'Cannot Get Effector Position of None!'
@@ -353,10 +358,12 @@ class Finger():
     #Updates all joint and target positiings for this finger 
     def update(self):
         #Update all joints
-        for joint in self.jointList:
+        for joint in self.get_joints():
+            print 'joint-update: %s' % joint
             joint.update()
         #Update the Target
         if self.has_target():
+            print 'target-update'
             self.target.update()
             #TODO: Project target position to be in range of arm Length
             #print 'unimplemented'
@@ -368,8 +375,8 @@ class Finger():
             # #print TARGET_POINT
     
     #Calculate the distance between the palm and the first joint of the finger
-    def calculate_palm_distance(palm):
-        numJoints = len(self.get_joints())
+    def calculate_palm_distance(self,palm):
+        numJoints = self.get_num_joints()
         if (numJoints > 0):
             palmDistance = (palm.get_position()-self.jointList[0]).magnitude
             return palmDistance
@@ -472,7 +479,8 @@ class Finger():
 
             #Last joint is not the effector so second to last
             currentJointNum = numJoints-2
-            maxJointNum = numJoints-1
+            maxJointNum = numJoints-2
+            minJointNum = 0
 
             #formerly perform_ccd(self,targetTipPos)
             #Config bool that tells us if we should be incrementing jointnums from 1
@@ -480,7 +488,11 @@ class Finger():
 
             USE_INCREASE_JOINT_NUM = False
             if USE_INCREASE_JOINT_NUM:
-                currentJointNum = 0
+                currentJointNum = minJointNum
+            # for i in range(0, numJoints):
+            #     print '%i : %s' % (i, joints[i])
+
+            # print self.target
 
             #Effector Position and the Target Position
             effector = self.get_effector()
@@ -495,28 +507,32 @@ class Finger():
                 #Set a Key Frame for the finger
                 self.set_keyframe(get_current_time())
                 #print distance
-                print 'add key frame after'
+
                 #Joint Angle Multiplier for scaling / smoothness
                 if (distance > 1):
                     CONFIG['JOINT_ANGLE_MULTIPLIER'] = 1.0
                 else:
                     CONFIG['JOINT_ANGLE_MULTIPLIER'] = 0.4
 
-                #Current Joint & Position
+                #Current Joint & 
                 joint = joints[currentJointNum]
 
                 #Update our joint rotation based on the effector Position and the Target Effector Pos
-                print 'update rot pos '
                 joint.update_rotation(effectorPos, targetTipPos)
                 
                 #New Effector Position
-                effectorPos = self.get_effector_position()
+                print effectorPos
+                print effector
+
+                effectorPos = effector.get_position()
+
+                print effectorPos
             
-                
+                print distance
                 #Update our distance from the target Point
                 oldDistance = distance
                 distance = (targetTipPos - effectorPos).magnitude
-
+                print distance
                 #Check if we have only moved a minimal amount of distance 
                 if (Math.fabs(oldDistance-distance) < EPSILON):
                     #Stop CCD
@@ -524,22 +540,23 @@ class Finger():
                 #Decrement Iteration
                 iterations = iterations - 1
                 
-
+                print 'iterations ' + str(iterations) 
                 ############################################
                 ######### Keep Joint Num in Bounds #########
                 ############################################
                 if USE_INCREASE_JOINT_NUM:
                     #Move to next joint closest to the TP
                     currentJointNum = currentJointNum + 1
-                    if currentJointNum > MAX_JOINT_ID:
+                    if currentJointNum > maxJointNum:
                         #keep the joint nums in bounds
-                        currentJointNum = MIN_JOINT_ID
+                        currentJointNum = minJointNum
                 else:
                     #Move onto next joint in the chain
                     currentJointNum = currentJointNum - 1
+                    print currentJointNum
                     #Cycle look if jointNum goes out of bound
-                    if (currentJointNum < MIN_JOINT_ID):
-                        currentJointNum = MAX_JOINT_ID
+                    if (currentJointNum < minJointNum):
+                        currentJointNum = maxJointNum
                 ############################################
                     #Update all positions of joints in this finger
                     self.update()
@@ -552,7 +569,7 @@ class Finger():
 ############################################################
 ########################### JOINT ##########################
 ############################################################
-class Joint():
+class Joint(object):
     #Create a joint
     def __init__(self, mayaID, child=None, parent=None, name=None):
         self.mayaID = mayaID
@@ -583,6 +600,7 @@ class Joint():
 
     #Get the position of this joint in Maya 
     def get_position(self):
+        self.update()
         return self.pos
 
     #Set the position of this joint in Maya 
@@ -598,12 +616,7 @@ class Joint():
 
     #Adds an animation key frame to the joint at at it current attributes
     def set_keyframe(self, currentTime):
-        print self
-        print self.mayaID
-        print currentTime
-
         pma.setKeyframe(self.mayaID, t=currentTime)
-        print 'set that frame!'
 
     def clear_keyframes(self, currentMaxTime):
         pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
@@ -711,16 +724,44 @@ class EndEffector(Joint):
 ############################################################
 
 class Target(Joint):
-    
     def __init__(self, mayaID):
         super(Target, self).__init__(mayaID)
     
     #Returns the output that is returned when using the print function
     def __str__(self):
-        return  '<# TargetID: \' %s \'' % (self.mayaID)
+        return  '<# TargetID: \'%s\'' % (self.mayaID)
 
     def __repr__(self):
         return self.__str__()
+
+    def update(self):
+        #Get the Current Target Position
+        mayaPos = pm.xform(self.mayaID, query=True, t=True, ws=True)
+        print mayaPos
+        self.pos = Leap.Vector(mayaPos[0], mayaPos[1], mayaPos[2])
+        #PRoject to be in range of the armLength
+        armLength = 50 #sum of the arm lengths
+
+        sphereCenter = Leap.Vector(0,0,0)
+        #self.pos = project_point(self.pos, sphereCenter, armLength)
+        #print TARGET_POINT
+
+    #Projects a point on to the Sphere whose radius is the armLenght
+    def project_point(point, sphereCenter, armLength):
+        sPoint = point-sphereCenter
+        #Magnitude of the point
+        pMag = sPoint.magnitude
+
+        if (pMag <= armLength):
+            #This point is within our sphere so we need not project it
+            #print "in range returning same point"
+            return point
+        #Vector to projected Point
+        Q = (point/pMag)*armLength
+        #The point projected onto the Sphere
+        projectPt = Q + sphereCenter
+        return projectPt
+
 
 
 #############################################################
@@ -839,7 +880,6 @@ def perform_ccd():  #formerly perform_ccd(self,targetTipPos)
     init_joint_positions()
     targetTipPos = JOINTS[TARGET_KEY]['pos']
     distance = (targetTipPos - JOINTS[EFFECTOR_KEY]['pos']).magnitude
-
 
     while (distance > DISTANCE_THRESHOLD and iterations > 0):
         #setKeyframe
@@ -1080,7 +1120,7 @@ calculate_joint_chain_length()
 init_joint_positions()
 
 #Reset the animation time
-reset_time()
+#reset_time()
 
 #Perform CCD (for testing)
 # perform_ccd() 
@@ -1089,30 +1129,31 @@ reset_time()
 ############################################################
 ####################### FINGER TEST ########################
 ############################################################
-def FINGER_TEST():
-    finger1 = Finger('R-IndexFinger')
-    print finger1
-    j6 = Joint('joint6')
-    j7 = Joint('joint7')
-    j8 = Joint('joint8')
-    j9 = Joint('joint9')
+#def FINGER_TEST():
+finger1 = Finger('R-IndexFinger')
 
-    tp = Joint('targetPoint')
+j6 = Joint('joint6')
+j7 = Joint('joint7')
+j8 = Joint('joint8')
+j9 = Joint('joint9')
 
-    finger1.add_joints([j6,j7,j8,j9])
-    finger1.set_target(tp)
+tp = Target('targetPoint')
 
-    #print tp.get_position() 
-    #print finger1
+finger1.add_joints([j6,j7,j8,j9])
+finger1.set_target(tp)
 
-    finger1.perform_ccd()
-    #for joint in finger1.get_joints():
-        #print joint.get_position()
+#print tp.get_position() 
+#print finger1
+finger1.clear_keyframes()
 
-    # print 'GET LENGTH CALL' + str(finger1.get_length())
-    # print "NEW LENGTH: " +str(finger1.length)
+finger1.perform_ccd()
+#for joint in finger1.get_joints():
+    #print joint.get_position()
 
-FINGER_TEST()
+# print 'GET LENGTH CALL' + str(finger1.get_length())
+# print "NEW LENGTH: " +str(finger1.length)
+
+#FINGER_TEST()
 
 ############################################################
 ############################################################
