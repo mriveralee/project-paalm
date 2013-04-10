@@ -757,7 +757,7 @@ def receive_target_queue(targetQueue):
             targetLengthRatio = target['length_ratio']
 
             #Index Finger and Base Position and end joint
-            finger = HANDS[fingerID]
+            finger = rightHand[fingerID]
             fingerBaseJoint = finger.get_joints()[0]
             fingerBasePosition = fingerBaseJoint.get_position()
             
