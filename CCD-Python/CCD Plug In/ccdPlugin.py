@@ -221,8 +221,8 @@ class Finger(object):
         self.currentTime += CONFIG['TIME_INCREMENT']
 
     #Clears all key frames on the finger's joints from
-    def clear_keyframes(self, currentMaxTime=2):
-        self.currentTime = 2
+    def clear_keyframes(self, currentMaxTime=1):
+        self.currentTime = 1
         currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
         for joint in self.jointList:
             #print joint
@@ -545,8 +545,8 @@ class Joint(object):
     def set_keyframe(self, currentTime):
         pm.setKeyframe(self.mayaID, t=currentTime)
 
-    def clear_keyframes(self, currentMaxTime=2):
-        pm.cutKey(self.mayaID, time=(2, currentMaxTime), option='keys')
+    def clear_keyframes(self, currentMaxTime=1):
+        pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
 
     #Get Composite Matrix - include all rotation, translation values
     def get_composite_matrix(self):
@@ -731,7 +731,7 @@ def reset_time():
     for jointKey in JOINTS: 
         #print jointKey 
         pm.cutKey(jointKey, time=(1, currentMaxTime), option='keys')
-    #pm.refresh(force=True)
+    pm.refresh(force=True)
     CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
     CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
     pm.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
@@ -762,7 +762,7 @@ def receive_target_queue(targetQueue):
             fingerBasePosition = fingerBaseJoint.get_position()
             
             #End of finger
-            fingerEnd = fingerFinger.get_effector()
+            fingerEnd = finger.get_effector()
             fingerEndPosition = fingerEnd.get_position()
             
             #Get Length of the Finger
@@ -771,14 +771,14 @@ def receive_target_queue(targetQueue):
             #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
             targetLength = fingerLength*targetLengthRatio
 
-            print 'Maya Finger Length : %s' % fingerLength
-            print 'Leap Length Ratio: %s' % targetLengthRatio
-            print 'Target Distance: %s' % targetLength
+            # print 'Maya Finger Length : %s' % fingerLength
+            # print 'Leap Length Ratio: %s' % targetLengthRatio
+            # print 'Target Distance: %s' % targetLength
 
             #Create a vector from the direction vector scale by the targetDistance
             #Add the base joint position to get out  target point location
             newTargetPos =  fingerBasePosition + ((targetDir) * targetLength)
-            print 'Target Position: %s' % newTargetPos
+            # print 'Target Position: %s' % newTargetPos
 
             #Set the Target Position 
             finger.set_target_position(newTargetPos)
