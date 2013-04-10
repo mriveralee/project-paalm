@@ -11,9 +11,48 @@ import string, math, MayaConnection
 import time
 
 
+
+############################################################
+##################### MAYA CONNECTION ######################
+############################################################
+# Class: MayaConnection
+# Basic Socket connection to Maya command port with
+# interface for making MEL commands in python
+
+#Socket Information
+import socket
+
+#In Maya run MEL command 
+#commandPort -pre trs -n ":9100";
+#commandPort -name ":6001"; -> Send Port
+#commandPort -n ":6002";  -> Receive Poort
+
 #Socket Information
 MAYA_PORT = 6001
-maya = MayaConnection.MayaConnection(MAYA_PORT)
+
+class MayaConnection():
+    
+    def __init__(self, PORT):
+        self.maya = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.maya.connect(('localhost', PORT))
+        self.port = PORT
+
+    #Close the socket port
+    def close(self):
+        self.maya.close()
+             
+    #Sends a tip position update to Maya to trigger a perform_ccd() action 
+    def send_tip_position(self, tpX, tpY, tpZ, lengthRatio):
+        command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+","+str(lengthRatio)+")\")\n"
+        self.maya.send(command)
+        #print command
+
+    #Sends a target queue update to Maya to trigger a perform_ccd() action 
+    def send_target_queue(self, targetQueue):
+        command = 'python(\"receive_target_queue(%s)\")\n' % targetQueue
+        #command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+","+str(lengthRatio)+")\")\n"
+        self.maya.send(command)
+        #print command
 
 #Demos
 IS_TRACKING_DEMO = True
@@ -21,19 +60,80 @@ MAYA_EFFECTOR_LENGTH = 1
 FRAME_SLEEP_TIME = 0.2
 
 
+############################################################
+####################### FINGER DATA ########################
+############################################################
+#Finger data just stores information about our max finger Lengths
+#With a reference to a finger ID 0 == Thumb, 4 == Pinky
 
+class FingerData():
+    def __init__(self, index):
+        self.index = index
+        self.baseLength = 0
+        self.sumBaseLengths = 0
+        self.baseLengthCount = 0
+
+    def __repr__(self):
+        return self.__str__()
+    def __str__(self):
+        return '{ "id": %s, "baseLength": %s}' % (self.index, self.baseLength)
+
+    def add_base_length(self, baseLength):
+        #print 'index: %s, sum_lengths: %s, count: %s' % (self.index, self.sumBaseLengths, self.baseLengthCount)
+        self.sumBaseLengths +=  baseLength
+        self.baseLengthCount += 1
+
+    def compute_base_length(self):
+        self.baseLength = self.sumBaseLengths/self.baseLengthCount
+        print 'Index: %s, Average Length: %s' % (self.index, self.baseLength)
+
+    def get_finger_id(self):
+        return self.index
+
+    def get_base_length(self):
+        return self.baseLength
+
+
+############################################################
+################ PHALANGEAL ANGLE LISTENNER ################
+############################################################
 #Listener for phaleangeal angle approximator
+
 class PAListener(Leap.Listener):
-    NEED_BASELINE = True
-    MAX_BASELINE_FRAMES = 1000
-    CURRENT_NUM_BASELINE_FRAMES = 0
-    MAX_TIP_LENGTH = 0.0
 
     #On initilization of listener
     def on_init(self, controller):
         #Make a new Maya Connection on port 6001
         self.is_peforming_ccd = False
+        self.fingerData = []
+        self.captureBaseline = True
+        self.maxNumBaselineFrames = 100
+        self.numBaselineFrames = 0
+        self.numFingers = 5
+
+        #Initialize finger data
+        self.init_fingers()
+
+        #Initialize Maya connection
+        self.init_maya_connection()
+
         print "Initialized"
+
+    #Initialize five fingers for this Listener
+    def init_fingers(self):
+        #Initialize only 4 fingers for the right hand
+        for index in range(0, self.numFingers):
+            data = FingerData(index)
+            #Add to our data array
+            self.fingerData.append(data)
+
+    #Initilize Maya Connection
+    def init_maya_connection(self):
+        self.mayaConnection= MayaConnection(MAYA_PORT)
+
+    #Get the finger data for an id
+    def get_finger_data(self, index):
+        return self.fingerData[index]
 
     #On connect of listener to controller
     def on_connect(self, controller):
@@ -41,11 +141,12 @@ class PAListener(Leap.Listener):
 
     #On disconnect of the listener to the controller
     def on_disconnect(self, controller):
+        self.mayaConnection.close()
         print "Disconnected"
 
     #On exit of listener
     def on_exit(self, controller):
-        maya.close()
+        self.mayaConnection.close()
         print "Exited"
 
     #On Frame being read from the Leap Do something
@@ -61,119 +162,129 @@ class PAListener(Leap.Listener):
             palmPosition = hand.palm_position 
             # Check if the hand has any fingers
             fingers = hand.fingers
-            if not fingers.empty:
+            if not fingers.empty and len(fingers) == self.numFingers:
 
-                #Get a BaseLine of length for the index finger
-                if self.NEED_BASELINE:
+                #Get a BaseLine of length for the fingers if we need them
+                if self.captureBaseline:
                     self.capture_baseline_lengths(fingers)
                     return
 
-
                 #Sort fingers to get order by 
                 fingers = self.sort_fingers_by_x(fingers)
+                #print fingers 
+                
+                #Queue for storing our target mapping data
+                targetQueue = []
+                for index in range(0, len(fingers)):
+                    finger = fingers[index]
+
+                    mappedTarget = self.get_target_mapping(finger, index)
+                    #Add to our queue
+                    targetQueue.append(mappedTarget)
+                
+                #Take the queue and send all the data to maya!
+                #print targetQueue
+                self.mayaConnection.send_target_queue(targetQueue)
                 #print fingers
-                #Get first finger (Let's assume the only finger is the INDEX finger)
-                indexFinger = fingers[0]
-                #Fingers have direction, length, width, tip_velocity, tip_position, etc.
-                #Not sure what I need so will have to figure that out later
-                #indexPosition = indexFinger.tip_position
-                #indexWidth = indexFinger.width
-                #indexTipVelocity = 
-            
-                indexDir = indexFinger.direction
-                
-                #TTRY TIP AND PALM POS
-                indexPosition = indexFinger.tip_position
 
-                indexLength = indexFinger.length
-                #Direction vector in Maya
-                mayaDir = self.map_dir_to_maya(indexDir, MAYA_EFFECTOR_LENGTH)
+    #Gets a target mapping for sending to maya 
+    def get_target_mapping(self, finger, index):
+            #Fingers have direction, length, width, tip_velocity, tip_position, etc.
+            #Not sure what I need so will have to figure that out later
 
-                #The new tip location in maya - Assume base position is at <0,0,0>
-                USE_DIRECTION = True
-              
-                if (USE_DIRECTION):
-                    targetTipPos = indexDir.normalized #mayaDir #self.get_maya_effector_tip_pos(mayaDir, mayaEffectorBasePos)
-                else:
-                    targetTipPos = indexFinger.tip_position
+            #Get the finger data associated with this fingerID
+            #print index
+            fingerData = self.get_finger_data(index)
+            maxFingerLength = fingerData.get_base_length()
 
-                #print "End Effector Pos: " + str(mEndTipPos)
-                print targetTipPos
-                #Flip the X-direction because maya's is the other way
-                print (targetTipPos*20)
+            #Get the finger dir and length
+            fDir = finger.direction
+            fLength = finger.length
+            fPos = finger.tip_position
 
-                lengthRatio = indexLength/self.MAX_TIP_LENGTH
-                print "Index Length Ratio: " + str(lengthRatio)
-                maya.send_tip_position_to_maya(targetTipPos[0],targetTipPos[1],targetTipPos[2], lengthRatio)
-                
+            #Are we only using direction or do we want positon?
+            USE_DIRECTION = True
 
-                time.sleep(FRAME_SLEEP_TIME)
-                #NOW RUN CCD with the target end tip position
-                #self.perform_ccd(targetTipPos)
+            if USE_DIRECTION:
+                #Use the directional vector for mapping
+                targetDir = fDir.normalized
+            else:
+                #Use the finger tip for mapping
+                targetDir = finger.tip_position
 
-                #Update the position of the joint
-                #maya.move(effector, mEndTipPos.x, mEndTipPos.y, mEndTipPos.z)
+            #The ratio of the length to the maxLength
+            fLengthRatio = fLength/maxFingerLength
 
+            mappedTarget = {
+                'id': index,
+                'dir': [targetDir[0], targetDir[1], targetDir[2]],
+                'length_ratio': fLengthRatio
+            }
 
-    #Gets a baseline avg of the finger tip lengths for mapping to Maya
+            return mappedTarget
+    #Returns if we should be capturing baseline length data
+    def should_capture_baseline(self):
+        return self.captureBaseline
+    #Increment the number of baseline frames captures
+    def increment_num_baseline_frames(self):
+        self.numBaselineFrames += 1
+        if (self.numBaselineFrames > self.maxNumBaselineFrames):
+            self.captureBaseline = False 
+   
+    #Returns the current number of baseline frames
+    def get_num_baseline_frames(self):
+        return self.numBaselineFrames
+
+    #Gets a baseline length for the fingers to compute the average
     def capture_baseline_lengths(self, fingers):
-        if (self.CURRENT_NUM_BASELINE_FRAMES < self.MAX_BASELINE_FRAMES and (not fingers.empty)):
+        if (self.should_capture_baseline() and len(fingers) == self.numFingers):
             #Sort the Fingers
             fingers = self.sort_fingers_by_x(fingers)
-            #Grab index finger
-            indexFinger = fingers[0]
+            
+            #For each finger, get its length and then add to the finger data
+            for index in range(0, len(fingers)):
+                #Get finger at index
+                finger = fingers[index]
+                #Get finger length
+                fLength = finger.length
+
+                #Update the fingerData to include the length
+                fingerData = self.get_finger_data(index)
+                fingerData.add_base_length(fLength)
+
             #Sum the length into the BASELINE Length
-            self.MAX_TIP_LENGTH += indexFinger.length
-            print "BASE: " + str(self.CURRENT_NUM_BASELINE_FRAMES)+ ", Length: " + str(indexFinger.length)
-            self.CURRENT_NUM_BASELINE_FRAMES += 1
+            print 'Calculating Average of Max Base Lengths - Frame %s of %s' % (self.get_num_baseline_frames(), self.maxNumBaselineFrames)
+            
+            #Increment our count of baseline frames
+            self.increment_num_baseline_frames()
+
         #When we have the max number of baseline frames, average the values for the fingers
         #Then begin actual target point collection
-        if (self.CURRENT_NUM_BASELINE_FRAMES == self.MAX_BASELINE_FRAMES):
-            self.MAX_TIP_LENGTH = self.MAX_TIP_LENGTH/self.MAX_BASELINE_FRAMES
-            self.NEED_BASELINE = False
-            print "Index Average Max Length: " + str(self.MAX_TIP_LENGTH)
+        if not self.should_capture_baseline():
+            #For each fingerData
+            for data in self.fingerData:
+                #average all the base frame lengths
+                data.compute_base_length()
 
-
-
-
-    #Gets the Effector Tip Position using a maya mapped Direction and the base(knuckle position)
-    def get_maya_effector_tip_pos(self, effectorDir, effectorBasePos) :
-        return effectorDir + effectorBasePos;
-
-    #Gets a direction vector in maya space
-    def map_dir_to_maya(self, leapFingerDir, mayaEffectorLength) :
-        #takes a normal vector in 3D space from the leap,
-        #maps it to a vector in Maya's 3D space that is used to 
-        #compute a new end effector position in maya
-        return leapFingerDir.normalized * mayaEffectorLength;
-
-    # Selection Sort the fingers based on  x-position 
+    # Sort the fingers based on  x-position 
     # (left-most == Thumb, Right Hand OR Pinky, Left Hand)
     def sort_fingers_by_x(self, fingers):  
-        sortedFingers = [];
         #Make a list of the fingers that isn't const (FingerList is)
+        sortedFingers = [];
         for finger in fingers:
             sortedFingers.append(finger)
             #print finger
-        #selection sort the fingers
-        for i in range(0, len(sortedFingers)):
-            min = i
-            for j in range(i+1, len(sortedFingers)):
-                x1 = sortedFingers[i].tip_position.x
-                x2 = sortedFingers[j].tip_position.x
-                if (x2 < x1):
-                    min = j
-            #Swap the min (leftmost)
-            temp = sortedFingers[i]
-            sortedFingers[i] = sortedFingers[min]
-            sortedFingers[min] = temp
+        #selection sort the fingers\
+        sortedFingers = sorted(sortedFingers, key=lambda finger: finger.tip_position.x)
         return sortedFingers
 
+
+
+############################################################
+########################### MAIN ###########################
+############################################################
 def main():
-    # Create a sample listener and controller
-    
-    #Sample Listener usage
-    #listener = SampleListener()
+    # Create a listener and controller
     listener = PAListener()        
     controller = Leap.Controller()
 
@@ -190,3 +301,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+############################################################
+######################## END SCRIPT ########################
+############################################################

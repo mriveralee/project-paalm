@@ -4,10 +4,10 @@ import sys, Leap, string
 import math as Math
 
 
-#import pymel.api as pma
+#import pymel.api as pm
 #PyMel Data Types for Matrices, Quaternions etc
 import pymel.core.datatypes as dt
-import pymel.core.animation as pma 
+#import pymel.core.animation as pm 
 
 
 #CONSTANTS
@@ -53,7 +53,8 @@ CONFIG = {
     'CURRENT_TIME': 0,                   #Current Animation time
     'INITIAL_MAX_TIME': 100,
     'MAX_TIME': 100,
-    'MIN_TIME': 0
+    'MIN_TIME': 0,
+    'TIME_INCREMENT': 15
 }
 
 
@@ -157,7 +158,6 @@ class Hand(object):
                 print 'Invalid finger index'
 
 
-
 ############################################################
 ########################### FINGER #########################
 ############################################################
@@ -170,6 +170,7 @@ class Finger(object):
         self.add_joints(jointList)
         self.set_target(target)
         self.calculate_length()
+        self.currentTime = 0
 
 
     #Returns the output that is returned when using the print function
@@ -213,10 +214,15 @@ class Finger(object):
         for joint in self.jointList:
             joint.set_keyframe(currentTime)
         #Increment the Global Time
-        increment_time()
+        self.increment_time()
     
+    #Increment the finger keyframe counter
+    def increment_time(self):
+        self.currentTime += CONFIG['TIME_INCREMENT']
+
     #Clears all key frames on the finger's joints from
-    def clear_keyframes(self, currentMaxTime=0):
+    def clear_keyframes(self, currentMaxTime=2):
+        self.currentTime = 2
         currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
         for joint in self.jointList:
             #print joint
@@ -230,7 +236,7 @@ class Finger(object):
         CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
         CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
         print CONFIG['MAX_TIME']
-        pma.playbackOptions(maxTime= CONFIG['MAX_TIME'])
+        pm.playbackOptions(maxTime= CONFIG['MAX_TIME'])
 
     #Sets the target object that is in maya for this finger
     def set_target(self, target):
@@ -391,16 +397,17 @@ class Finger(object):
         #   If it is the base node then the new current bone is the last bone in the chain
         #   Else the new current bone is the previous one in the chain
     #End while
-    def perform_ccd(self, palmToWristLength=0):
+    def perform_ccd(self, keyframeTime, palmToWristLength=0):
         #No ccd if no target
         if (self.target is None) or (self.get_num_joints() < 2):
             print 'No Target to Perform CCD On!'
             return False
         else:
+            self.currentTime = keyframeTime
             #Distance Threshold for ending the ccd
             DISTANCE_THRESHOLD = 0.01
             #Number of iterations to perform per finger
-            iterations = 90
+            iterations = 40
 
             #Update positions for all joints
             self.update()
@@ -430,11 +437,12 @@ class Finger(object):
             #Distance of the effector to the Target
             distance = (targetTipPos - effectorPos).magnitude
 
+
+            #Set a Key Frame for the finger
+            self.set_keyframe(keyframeTime)
             #CCD Main Loop
             while (distance > DISTANCE_THRESHOLD and iterations > 0):
 
-                #Set a Key Frame for the finger
-                self.set_keyframe(get_current_time())
                 #print distance
 
                 #Joint Angle Multiplier for scaling / smoothness
@@ -486,7 +494,7 @@ class Finger(object):
 
                     #Update all positions of joints in this finger
                 self.update()
-                    
+              
             return True
 
 ############################################################
@@ -535,10 +543,10 @@ class Joint(object):
 
     #Adds an animation key frame to the joint at at it current attributes
     def set_keyframe(self, currentTime):
-        pma.setKeyframe(self.mayaID, t=currentTime)
+        pm.setKeyframe(self.mayaID, t=currentTime)
 
-    def clear_keyframes(self, currentMaxTime):
-        pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
+    def clear_keyframes(self, currentMaxTime=2):
+        pm.cutKey(self.mayaID, time=(2, currentMaxTime), option='keys')
 
     #Get Composite Matrix - include all rotation, translation values
     def get_composite_matrix(self):
@@ -581,29 +589,51 @@ class Joint(object):
         #The Two Vectors of Interest
         V1 = (effectorPos-jointPos)
         V2 = (targetPos-jointPos)
-       
-        #Get Axis & Angle - Returns vector and angle in degrees
-        axisAngle = pm.angleBetween(v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))            
 
-        #Make a quaternion from the axis and the angle
-        axis = dt.Vector(axisAngle[0], axisAngle[1], axisAngle[2])
+        QUATS = True
+        if QUATS:
+            #Get Axis & Angle - Returns vector and angle in degrees
+            axisAngle = pm.angleBetween(v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2]))            
 
-        #Convert Angle to Degrees
-        angle =  (axisAngle[3]*DEG_TO_RAD)
+            #Make a quaternion from the axis and the angle
+            axis = dt.Vector(axisAngle[0], axisAngle[1], axisAngle[2])
 
-        #Apply magic number to the joint to prevent moving too sharply to the targetPoint
-        angle *= CONFIG['JOINT_ANGLE_MULTIPLIER'] #For radian 
-        rotQuat = dt.Quaternion(angle, axis)
+            #Convert Angle to Degrees
+            angle =  (axisAngle[3]*DEG_TO_RAD)
 
-        #Get current matrix - CURRENTLY DOES NOT INCORPORATE SCALE (cutting off values)
-        mat = self.get_composite_matrix()
+            #Apply magic number to the joint to prevent moving too sharply to the targetPoint
+            angle *= CONFIG['JOINT_ANGLE_MULTIPLIER'] #For radian 
+            rotQuat = dt.Quaternion(angle, axis)
 
-        #Apply Rotation to the matrix
-        mat.addRotationQuaternion(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w, space='world')   #object space
-        
-        #Set the composite matrix for the joint
-        self.set_composite_matrix(mat)
+            #Get current matrix - CURRENTLY DOES NOT INCORPORATE SCALE (cutting off values)
+            mat = self.get_composite_matrix()
 
+            #Apply Rotation to the matrix
+            mat.addRotationQuaternion(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w, space='world')   #object space
+            
+            #Set the composite matrix for the joint
+            self.set_composite_matrix(mat)
+        else: 
+            #Get Axis & Angle - Returns vector and angle in degrees
+            angles = pm.angleBetween(euler=True, v1=(V1[0], V1[1], V1[2]), v2=(V2[0], V2[1], V2[2])) 
+            pm.rotate(self.mayaID, rotate=(angles[0],  angles[1], angles[2]))
+    #TODO DEFINE FUNCTION FOR CREATING A TARGET POINT In
+    #MAYA FOR THIS FINGER on INIT
+
+    #Set Limit of X rotation on Joint
+    def set_rotation_limit_x(self, minX, maxX):
+        pm.joint(self.mayaID, edit=True, limitX=(minX, maxX))
+
+    #Set Limit of Y rotation on Joint
+    def set_rotation_limit_y(self, minY, maxY):
+        pm.joint(self.mayaID, edit=True, limitY=(minY, maxY))
+
+    #Set Limit of Z rotation on Joint
+    def set_rotation_limit_z(self, minZ, maxZ):
+        pm.joint(self.mayaID, edit=True, limitZ=(minZ, maxZ))
+
+    def set_rotation_limits(self, minX, maxX, minY, maxY, minZ, maxZ):
+        pm.joint(self.mayaID, edit=True, limitX=(minX, maxX), limitY=(minY, maxY), limitZ=(minZ, maxZ))
 
 ############################################################
 ################## END EFFECTOR (JOINT) ####################
@@ -638,6 +668,9 @@ class Target(Joint):
         return self.__str__()
 
 
+    def set_position(self, position):
+        super(Target, self).set_position(position)
+        self.set_keyframe(get_current_time())
 
     def update(self):
         #Get the Current Target Position
@@ -666,6 +699,7 @@ class Target(Joint):
         projectPt = Q + sphereCenter
         return projectPt
 
+    #TODO CREATE SPHERE IN MAYA FOR FINGER
 
 
 #############################################################
@@ -679,8 +713,8 @@ def get_max_time():
     return CONFIG['MAX_TIME']
 
 def increment_time():
-    CONFIG[TIME_KEY] = CONFIG[TIME_KEY] + 15
-    pma.playbackOptions(loop='once', maxTime=CONFIG[TIME_KEY])
+    CONFIG[TIME_KEY] = CONFIG[TIME_KEY] + CONFIG['TIME_INCREMENT']
+    pm.playbackOptions(loop='once', maxTime=CONFIG[TIME_KEY])
     currentTime = get_current_time()
     maxTimeBuffer =  get_max_time()-10
     if (currentTime >= maxTimeBuffer):
@@ -688,7 +722,7 @@ def increment_time():
 
 def increase_max_time():
     CONFIG['MAX_TIME'] = CONFIG['MAX_TIME'] + 200
-    pma.playbackOptions(maxTime=CONFIG['MAX_TIME'])
+    pm.playbackOptions(maxTime=CONFIG['MAX_TIME'])
 
 
 def reset_time(): 
@@ -700,12 +734,73 @@ def reset_time():
     #pm.refresh(force=True)
     CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
     CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
-    pma.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
+    pm.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
 
 
-JOINT_CHAIN_LENGTH = 20
+
+#Interfacing with a command port that sends target positon updates
+def receive_target_queue(targetQueue):
+    #Right Hand
+    rightHand = HANDS[0]
+    numFingers = len(rightHand)
+    #Assume using direction
+    for target in targetQueue:
+        fingerID = target['id']
+
+        #There is an id to match out finger id in our maya hand
+        if (fingerID < numFingers):
+            #
+
+            #Get the target Direction & lengthRatio
+            tDir = target['dir']
+            targetDir = Leap.Vector(tDir[0], tDir[1], tDir[2])
+            targetLengthRatio = target['length_ratio']
+
+            #Index Finger and Base Position and end joint
+            finger = HANDS[fingerID]
+            fingerBaseJoint = finger.get_joints()[0]
+            fingerBasePosition = fingerBaseJoint.get_position()
+            
+            #End of finger
+            fingerEnd = fingerFinger.get_effector()
+            fingerEndPosition = fingerEnd.get_position()
+            
+            #Get Length of the Finger
+            fingerLength = finger.get_length()
+
+            #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
+            targetLength = fingerLength*targetLengthRatio
+
+            print 'Maya Finger Length : %s' % fingerLength
+            print 'Leap Length Ratio: %s' % targetLengthRatio
+            print 'Target Distance: %s' % targetLength
+
+            #Create a vector from the direction vector scale by the targetDistance
+            #Add the base joint position to get out  target point location
+            newTargetPos =  fingerBasePosition + ((targetDir) * targetLength)
+            print 'Target Position: %s' % newTargetPos
+
+            #Set the Target Position 
+            finger.set_target_position(newTargetPos)
+    
+    #Perform CCD now :)
+    ccdTime = get_current_time()
+    for finger in rightHand:
+        finger.perform_ccd(ccdTime)
+        #Refresh Display
+        pm.refresh(force=True)
+
+    increment_time()
+
+
+# ccdTime = get_current_time()
+# for finger in HANDS[0]:
+#         finger.perform_ccd(ccdTime)
+#         pm.refresh(force=True)
+
+
 #Interfacing with a command port thatsend tip position updates
-def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
+def receive_tip_position_from_leap(tpX, tpY, tpZ, leapLengthRatio):
     NOT_USE_DIRECTION = False
     if NOT_USE_DIRECTION:
         #Map Point Value to maya CS
@@ -723,25 +818,42 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, lengthRatio):
         tpY = ((tpY-LEAP_MIN_Y)/LEAP_RANGE_Y)*MAYA_RANGE_Y + MAYA_MIN_Y
         tpZ = ((tpZ-LEAP_MIN_Z)/LEAP_RANGE_Z)*MAYA_RANGE_Z + MAYA_MIN_Z
     
+    #Index Finger and Base Position and end joint
+    indexFinger = FINGERS[0]
+    indexBaseJoint = indexFinger.get_joints()[0]
+    indexBasePosition = indexBaseJoint.get_position()
+    
+    #End of finger
+    indexEnd = indexFinger.get_effector()
+    indexEndPosition = indexEnd.get_position()
+    
+    #Get Length of the Finger
+    indexLength = indexFinger.get_length()
+
     #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
-    JOINT_CHAIN_LENGTH = 20
-    lengthRatio = JOINT_CHAIN_LENGTH*lengthRatio
-    print 'Length ratio: %i' % lengthRatio
-    
-    #print JOINT_CHAIN_LENGTH
-    #Create a vector from the coordinates
-    updatedPos = Leap.Vector(tpX, tpY, tpZ)
-    #Apply the joint chain length to the vector of motion & add the base position
-    
-    updatedPos = updatedPos*lengthRatio + FINGERS[0].get_joints()[0].get_position()
-    #print updatedPos
-    #Note: relative adds translation;absolute sets
-    FINGERS[0].set_target_position(updatedPos)
+    targetLength = indexLength*leapLengthRatio
+
+    print 'Maya Finger Length : %s' % indexLength
+    print 'Leap Length Ratio: %s' % leapLengthRatio
+    print 'Target Distance: %s' % targetLength
+
+    #Create a vector from the direction vector scale by the targetDistance
+    #Add the base joint position to get out  target point location
+    newTargetPos =  indexBasePosition + ((Leap.Vector(tpX, tpY, tpZ)) * targetLength)
+    print 'Target Position: %s' % newTargetPos
+
+    #Set the Target Position 
+    FINGERS[0].set_target_position(newTargetPos)
 
     #Perform CCD now :)
     FINGERS[0].perform_ccd()
+
+    #Refresh Display
     pm.refresh(force=True)
 
+
+
+#Clips tip positions within bounds 
 def clip_tip_position(tpX, tpY, tpZ):
     #Clip X-Comp
     if (tpX < LEAP_MIN_X):
@@ -763,67 +875,11 @@ def clip_tip_position(tpX, tpY, tpZ):
 MIN_JOINT_ID = 6
 MAX_JOINT_ID = 9
 
-def calculate_joint_chain_length():
-    #initialize all joint positions
-    #init_joint_positions()
-
-
-    wristPos =  palmPos = pm.xform('hand4_joint1', query=True, ws=True, t=True)
-    wristPos =  Leap.Vector(wristPos[0], wristPos[1], wristPos[2])
-    #print wristPos
-
-    palmPos = pm.xform('hand4_joint1|joint2', query=True, ws=True, t=True) #//in an array [x,y,z]
-    palmPos =  Leap.Vector(palmPos[0], palmPos[1], palmPos[2])
-    #print palmPos
-
-    #Get initial palm-to-finger length
-    isFirst = True
-
-    #Sum of Segment lengths
-    chainLength = 0;
-
-    #Include palm and wrist vect mag
-    #chainLength = (palmPos - wristPos).magnitude
-
-    #print chainLength
-
-    #Now get length of vectors between two joints
-    # for index in range(MIN_JOINT_ID, MAX_JOINT_ID+1):  #PLUS 1 BECAUSE MAX joint ID doesn't go to the EFFECTOR
-
-    #     firstKey = index
-    #     secondKey = index +1
-
-    #     # firstJoint = JOINTS['joint'+str(firstKey)]
-    #     # secondJoint = JOINTS['joint'+str(secondKey)]
-    #     #print 'joint'+str(firstKey) + '-' + 'joint'+str(secondKey)
-    #     #Get the segment length between the two joints
-    #     jointSegment = secondJoint['pos'] - firstJoint['pos']
-
-    #     segmentLength = jointSegment.magnitude
-    #     #print segmentLength
-    #     if (isFirst):
-    #         #print 'isFirst'
-    #         #jointSegment = firstJoint['pos']-palmPos
-    #         #segmentLength += jointSegment.magnitude
-    #         isFirst = False
-
-    #     #print segmentLength
-    #     #Add to the chainLength
-    #     chainLength += segmentLength
-    # #Set our new Chain length
-    # JOINT_CHAIN_LENGTH = chainLength
-    # #print chainLength
-    # print 'FROM OLD CL!:' +str(chainLength)
-    # #Add an extension so the mapping length is not directly on the sphere
-    # chainExtension = 5;
-    #JOINT_CHAIN_LENGTH +=  chainExtension
 
 #Main Loop for initialization
 def main():
     #Close open ports & open our current port
     open_command_port()
-    #init the Joint chain length
-    calculate_joint_chain_length()
 
     #Initialize all joint positions
     #init_joint_positions()
@@ -841,8 +897,6 @@ if __name__ == '__main__':
 
 #Close open ports & open our current port
 open_command_port()
-#init the Joint chain length
-#calculate_joint_chain_length()
 
 #Initialize all joint positions
 #init_joint_positions()
@@ -861,35 +915,174 @@ open_command_port()
 ############################################################
 
 FINGERS = []
-FINGER_TEST()
+HANDS = []
 
 def FINGER_TEST():
-    finger1 = Finger('R-IndexFinger')
+    
+    ##### THUMB FINGER ####
+    thumbFinger = Finger('R-ThumbFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j3 = Joint('joint3')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j4 = Joint('joint4')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j5 = Joint('joint5')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
 
+    #Target Position
+    thumbTarget = Target('thumbTarget')
+
+    #Add ordered joint chain to finger 1
+    thumbFinger.add_joints([j3,j4,j5])
+
+    #Set the target for the finger
+    thumbFinger.set_target(thumbTarget)
+
+    #Clear all set key frames
+    thumbFinger.clear_keyframes()
+    FINGERS.append(thumbFinger)
+
+    #### INDEX FINGER #####
+    indexFinger = Finger('R-IndexFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
     j6 = Joint('joint6')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
     j7 = Joint('joint7')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
     j8 = Joint('joint8')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
     j9 = Joint('joint9')
-    tp = Target('targetPoint')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    indexTarget = Target('indexTarget')
 
 
     #Add ordered joint chain to finger 1
-    finger1.add_joints([j6,j7,j8,j9])
+    indexFinger.add_joints([j6,j7,j8,j9])
 
     #Set the target for the finger
-    finger1.set_target(tp)
+    indexFinger.set_target(indexTarget)
 
     #Clear all set key frames
-    finger1.clear_keyframes()
+    indexFinger.clear_keyframes()
+    FINGERS.append(indexFinger)
 
-    FINGERS.append(finger1)
+    #finger1.perform_ccd()
 
-    finger1.perform_ccd()
+
+    ##### MIDDLE FINGER #####
+    middleFinger = Finger('R-MiddleFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j10 = Joint('joint10')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j11 = Joint('joint11')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j12 = Joint('joint12')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
+    j13 = Joint('joint13')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    middleTarget = Target('middleTarget')
+
+    #Add ordered joint chain to finger 1
+    middleFinger.add_joints([j10,j11,j12,j13])
+
+    #Set the target for the finger
+    middleFinger.set_target(middleTarget)
+
+    #Clear all set key frames
+    middleFinger.clear_keyframes()
+    FINGERS.append(middleFinger)
+
+    ##### RING FINGER #####
+    ringFinger = Finger('R-RingFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j14 = Joint('joint14')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j15 = Joint('joint15')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j16 = Joint('joint16')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
+    j17 = Joint('joint17')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    ringTarget = Target('ringTarget')
+
+    #Add ordered joint chain to finger 1
+    ringFinger.add_joints([j14,j15,j16,j17])
+
+    #Set the target for the finger
+    ringFinger.set_target(ringTarget)
+
+    #Clear all set key frames
+    ringFinger.clear_keyframes()
+    FINGERS.append(ringFinger)
+
+    ##### PINKY FINGER #####
+    pinkyFinger = Finger('R-PinkyFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j18 = Joint('joint18')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j19 = Joint('joint19')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j20 = Joint('joint20')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
+    j21 = Joint('joint21')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    pinkyTarget = Target('pinkyTarget')
+
+    #Add ordered joint chain to finger 1
+    pinkyFinger.add_joints([j18,j19,j20,j21])
+
+    #Set the target for the finger
+    pinkyFinger.set_target(pinkyTarget)
+
+    #Clear all set key frames
+    pinkyFinger.clear_keyframes()
+    FINGERS.append(pinkyFinger)
+
+    ## ADD ALL FINGERS as a HAND
+    HANDS.append(FINGERS)
+
+
 
 # print 'GET LENGTH CALL' + str(finger1.get_length())
 # print "NEW LENGTH: " +str(finger1.length)
 ############################################################
 ############################################################
 ############################################################
-
+FINGER_TEST()
 ##################### END SCRIPT #######################
