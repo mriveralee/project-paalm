@@ -50,10 +50,10 @@ LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
 
 CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5,
-    'CURRENT_TIME': 0,                   #Current Animation time
+    'CURRENT_TIME': 1,                   #Current Animation time
     'INITIAL_MAX_TIME': 100,
     'MAX_TIME': 100,
-    'MIN_TIME': 0,
+    'MIN_TIME': 1,
     'TIME_INCREMENT': 15
 }
 
@@ -66,7 +66,7 @@ def open_command_port():
         if (i ==':6001'):
             #Port already exists
             return
-    #Otherwise open the port
+    #Otherwise open the port`
     pm.commandPort(name=':6001')
 
 

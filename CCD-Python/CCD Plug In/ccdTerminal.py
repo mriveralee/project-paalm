@@ -107,7 +107,7 @@ class PAListener(Leap.Listener):
         self.is_peforming_ccd = False
         self.fingerData = []
         self.captureBaseline = True
-        self.maxNumBaselineFrames = 100
+        self.maxNumBaselineFrames = 300
         self.numBaselineFrames = 0
         self.numFingers = 5
 
