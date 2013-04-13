@@ -10,43 +10,18 @@ import pymel.core.datatypes as dt
 #import pymel.core.animation as pm 
 
 
-#CONSTANTS
+
+############################################################
+#################### CONSTANT VARS ####################
+############################################################
 DEG_TO_RAD = Math.pi/180
 EPSILON = 0.001
+CURRENT_TIME_KEY = 'CURRENT_TIME'
 
 
-
-#Joints and Positions of finger
-TIME_KEY = 'CURRENT_TIME'
-TARGET_KEY = 'targetPoint'
-BASE_KEY = 'joint6'#'joint1'
-
-#Mapping Range of Maya CS
-MAYA_MAX_X = 20
-MAYA_MIN_X = -20
-MAYA_RANGE_X = MAYA_MAX_X-MAYA_MIN_X
-
-MAYA_MAX_Y = 12
-MAYA_MIN_Y = -12
-MAYA_RANGE_Y = MAYA_MAX_Y-MAYA_MIN_Y
-
-MAYA_MAX_Z = 20
-MAYA_MIN_Z = -20
-MAYA_RANGE_Z = MAYA_MAX_Z-MAYA_MIN_Z
-
-#Configuration of Coordinate Max, Min in Leap CS
-LEAP_MAX_X = 110
-LEAP_MIN_X = -80
-LEAP_RANGE_X = LEAP_MAX_X-LEAP_MIN_X
-
-LEAP_MAX_Y = 430  #450
-LEAP_MIN_Y = 280  # 130
-LEAP_RANGE_Y = LEAP_MAX_Y-LEAP_MIN_Y
-
-LEAP_MAX_Z = 70   #-50
-LEAP_MIN_Z = 20   #180
-LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
-
+############################################################
+#################### CONFIGURATION VARS ####################
+############################################################
 
 CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5,
@@ -57,7 +32,9 @@ CONFIG = {
     'TIME_INCREMENT': 15
 }
 
-
+#############################################################
+############## SOCKET COMMAND PORT FOR MAYA #################
+#############################################################
 #create Command port - sets port up to receive data on the mel function for receiveTipPos
 # This then forwards the data to the python function
 def open_command_port():
@@ -233,7 +210,7 @@ class Finger(object):
             self.target.clear_keyframes(currentMaxTime)
 
 
-        CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
+        CONFIG[CURRENT_TIME_KEY] = CONFIG['MIN_TIME']
         CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
         print CONFIG['MAX_TIME']
         pm.playbackOptions(maxTime= CONFIG['MAX_TIME'])
@@ -302,15 +279,7 @@ class Finger(object):
         #Update the Target
         if self.has_target():
             # print 'target-update'
-            self.target.update()
-            #TODO: Project target position to be in range of arm Length
-            #print 'unimplemented'
-            # #PRoject to be in range of the armLength
-            # armLength = 20 #sum of the arm lengths
-            # basePtKey = BASE_KEY
-            # sphereCenter = JOINTS[basePtKey]['pos']
-            # JOINTS[TARGET_KEY]['pos'] = project_point(TARGET_POINT, sphereCenter, armLength)
-            # #print TARGET_POINT
+            self.target.update() 
     
     #Calculate the distance between the palm and the first joint of the finger
     def calculate_palm_distance(self,palm):
@@ -703,18 +672,18 @@ class Target(Joint):
 
 
 #############################################################
-################ ANIMATION TIME FUNCTION ####################
+############## ANIMATION TIME FUNCTIONALITY #################
 #############################################################
 
 def get_current_time():
-    return CONFIG[TIME_KEY]
+    return CONFIG[CURRENT_TIME_KEY]
 
 def get_max_time():
     return CONFIG['MAX_TIME']
 
 def increment_time():
-    CONFIG[TIME_KEY] = CONFIG[TIME_KEY] + CONFIG['TIME_INCREMENT']
-    pm.playbackOptions(loop='once', maxTime=CONFIG[TIME_KEY])
+    CONFIG[CURRENT_TIME_KEY] = CONFIG[CURRENT_TIME_KEY] + CONFIG['TIME_INCREMENT']
+    pm.playbackOptions(loop='once', maxTime=CONFIG[CURRENT_TIME_KEY])
     currentTime = get_current_time()
     maxTimeBuffer =  get_max_time()-10
     if (currentTime >= maxTimeBuffer):
@@ -732,13 +701,16 @@ def reset_time():
         #print jointKey 
         pm.cutKey(jointKey, time=(1, currentMaxTime), option='keys')
     pm.refresh(force=True)
-    CONFIG[TIME_KEY] = CONFIG['MIN_TIME']
+    CONFIG[CURRENT_TIME_KEY] = CONFIG['MIN_TIME']
     CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
     pm.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
 
 
 
-#Interfacing with a command port that sends target positon updates
+#Interfacing with a command port that sends target positon updates for
+# each finger. <targetQueue> is an array of dictionaries with each one 
+# containing a finger 'id', a 'length_ratio', and and 'dir' 
+# (the directional vector)
 def receive_target_queue(targetQueue):
     #Right Hand
     rightHand = HANDS[0]
@@ -749,8 +721,6 @@ def receive_target_queue(targetQueue):
 
         #There is an id to match out finger id in our maya hand
         if (fingerID < numFingers):
-            #
-
             #Get the target Direction & lengthRatio
             tDir = target['dir']
             targetDir = Leap.Vector(tDir[0], tDir[1], tDir[2])
@@ -790,14 +760,8 @@ def receive_target_queue(targetQueue):
         #Refresh Display
         pm.refresh(force=True)
 
+    #Increase Animation Timer
     increment_time()
-
-
-# ccdTime = get_current_time()
-# for finger in HANDS[0]:
-#         finger.perform_ccd(ccdTime)
-#         pm.refresh(force=True)
-
 
 #Interfacing with a command port thatsend tip position updates
 def receive_tip_position_from_leap(tpX, tpY, tpZ, leapLengthRatio):
@@ -854,6 +818,31 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, leapLengthRatio):
 
 
 #Clips tip positions within bounds 
+#Mapping Range of Maya CS
+MAYA_MAX_X = 20
+MAYA_MIN_X = -20
+MAYA_RANGE_X = MAYA_MAX_X-MAYA_MIN_X
+
+MAYA_MAX_Y = 12
+MAYA_MIN_Y = -12
+MAYA_RANGE_Y = MAYA_MAX_Y-MAYA_MIN_Y
+
+MAYA_MAX_Z = 20
+MAYA_MIN_Z = -20
+MAYA_RANGE_Z = MAYA_MAX_Z-MAYA_MIN_Z
+
+#Configuration of Coordinate Max, Min in Leap CS
+LEAP_MAX_X = 110
+LEAP_MIN_X = -80
+LEAP_RANGE_X = LEAP_MAX_X-LEAP_MIN_X
+
+LEAP_MAX_Y = 430  #450
+LEAP_MIN_Y = 280  # 130
+LEAP_RANGE_Y = LEAP_MAX_Y-LEAP_MIN_Y
+
+LEAP_MAX_Z = 70   #-50
+LEAP_MIN_Z = 20   #180
+LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
 def clip_tip_position(tpX, tpY, tpZ):
     #Clip X-Comp
     if (tpX < LEAP_MIN_X):
@@ -871,10 +860,6 @@ def clip_tip_position(tpX, tpY, tpZ):
     elif (tpZ > LEAP_MAX_Z):
         tpZ = LEAP_MAX_Z
     return [tpX, tpY, tpZ] 
-
-MIN_JOINT_ID = 6
-MAX_JOINT_ID = 9
-
 
 #Main Loop for initialization
 def main():
