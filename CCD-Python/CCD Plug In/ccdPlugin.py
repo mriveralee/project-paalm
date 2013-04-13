@@ -706,7 +706,9 @@ def reset_time():
     pm.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
 
 
-
+#############################################################
+################## PORT RECEIVING FUNCTIONS #################
+#############################################################
 #Interfacing with a command port that sends target positon updates for
 # each finger. <targetQueue> is an array of dictionaries with each one 
 # containing a finger 'id', a 'length_ratio', and and 'dir' 
@@ -764,6 +766,7 @@ def receive_target_queue(targetQueue):
     increment_time()
 
 #Interfacing with a command port thatsend tip position updates
+# works for the first finger
 def receive_tip_position_from_leap(tpX, tpY, tpZ, leapLengthRatio):
     NOT_USE_DIRECTION = False
     if NOT_USE_DIRECTION:
@@ -816,6 +819,9 @@ def receive_tip_position_from_leap(tpX, tpY, tpZ, leapLengthRatio):
     pm.refresh(force=True)
 
 
+############################################################
+############## CLIPPING FUNCTION (NOT USED) ################
+############################################################
 
 #Clips tip positions within bounds 
 #Mapping Range of Maya CS
@@ -843,6 +849,7 @@ LEAP_RANGE_Y = LEAP_MAX_Y-LEAP_MIN_Y
 LEAP_MAX_Z = 70   #-50
 LEAP_MIN_Z = 20   #180
 LEAP_RANGE_Z = LEAP_MAX_Z-LEAP_MIN_Z
+
 def clip_tip_position(tpX, tpY, tpZ):
     #Clip X-Comp
     if (tpX < LEAP_MIN_X):
@@ -861,6 +868,10 @@ def clip_tip_position(tpX, tpY, tpZ):
         tpZ = LEAP_MAX_Z
     return [tpX, tpY, tpZ] 
 
+
+############################################################
+################### MAIN (USED FOR TESTING) ################
+############################################################
 #Main Loop for initialization
 def main():
     #Close open ports & open our current port
@@ -880,21 +891,6 @@ if __name__ == '__main__':
     #main()
 
 
-#Close open ports & open our current port
-open_command_port()
-
-#Initialize all joint positions
-#init_joint_positions()
-
-#Reset the animation time
-#reset_time()
-
-#Perform CCD (for testing)
-# perform_ccd() 
-
-
-
-
 ############################################################
 ####################### FINGER TEST ########################
 ############################################################
@@ -903,7 +899,9 @@ FINGERS = []
 HANDS = []
 
 def FINGER_TEST():
-    
+    #Close open ports & open our current port
+    open_command_port()
+
     ##### THUMB FINGER ####
     thumbFinger = Finger('R-ThumbFinger')
     #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
@@ -1064,10 +1062,11 @@ def FINGER_TEST():
 
 
 
-# print 'GET LENGTH CALL' + str(finger1.get_length())
-# print "NEW LENGTH: " +str(finger1.length)
-############################################################
-############################################################
-############################################################
+## RUN THE FINGER TEST
 FINGER_TEST()
+
+############################################################
+############################################################
+############################################################
+
 ##################### END SCRIPT #######################
