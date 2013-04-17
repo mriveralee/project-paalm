@@ -199,13 +199,13 @@ class PAListener(Leap.Listener):
                 elif currentNumFingers == 2:
                     print '2 - PEACE'
                     targetQueue = self.get_peace_sign(targetQueue)
-                    return
+                    #return
 
                 elif currentNumFingers == 3:
                     print '3 - ROCKER'
                     targetQueue = self.get_rocker(targetQueue)
                     #print targetQueue
-                    return
+                    #return
 
                 elif currentNumFingers == 4:
                     targetQueue = self.get_spongebob(targetQueue)
@@ -226,19 +226,19 @@ class PAListener(Leap.Listener):
     def get_rocker(self, targetQueue):
         targetQueue[0]['id'] = 0
         targetQueue[1]['id'] = 1
-        targetQueue[2]['id'] = 2
+        targetQueue[2]['id'] = 4
         return targetQueue
 
     #Set the finger ID to be '1' for the index
     def get_pointer(self, targetQueue):
-        targetQueue[0]['id'] = 1
+        targetQueue[0]['id'] = 0
         return targetQueue
 
     def get_spongebob(self, targetQueue):
-        targetQueue[0]['id'] = 1
-        targetQueue[1]['id'] = 2
-        targetQueue[2]['id'] = 3
-        targetQueue[3]['id'] = 4
+        targetQueue[0]['id'] = 0
+        targetQueue[1]['id'] = 1
+        targetQueue[2]['id'] = 2
+        targetQueue[3]['id'] = 3
         return targetQueue
 
 
