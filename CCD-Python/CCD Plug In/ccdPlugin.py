@@ -27,7 +27,7 @@ CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5,
     'CURRENT_TIME': 1,                   #Current Animation time
     'INITIAL_MAX_TIME': 30000,
-    'MAX_TIME': 30000,
+    'MAX_TIME': 60000,
     'MIN_TIME': 1,
     'TIME_INCREMENT': 15
 }
@@ -736,39 +736,40 @@ def receive_target_queue(targetQueue):
         fingerID = target['id']
 
         #There is an id to match out finger id in our maya hand
-        if (fingerID < numFingers):
-            #Get the target Direction & lengthRatio
-            tDir = target['dir']
-            targetDir = Leap.Vector(tDir[0], tDir[1], tDir[2])
-            targetLengthRatio = target['length_ratio']
+        #if (fingerID < numFingers):
 
-            #Index Finger and Base Position and end joint
-            finger = rightHand[fingerID]
-            fingerBaseJoint = finger.get_joints()[0]
-            fingerBasePosition = fingerBaseJoint.get_position()
-            
-            #End of finger
-            fingerEnd = finger.get_effector()
-            fingerEndPosition = fingerEnd.get_position()
-            
-            #Get Length of the Finger
-            fingerLength = finger.get_length()
+        #Get the target Direction & lengthRatio
+        tDir = target['dir']
+        targetDir = Leap.Vector(tDir[0], tDir[1], tDir[2])
+        targetLengthRatio = target['length_ratio']
 
-            #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
-            targetLength = fingerLength*targetLengthRatio
+        #Index Finger and Base Position and end joint
+        finger = rightHand[fingerID]
+        fingerBaseJoint = finger.get_joints()[0]
+        fingerBasePosition = fingerBaseJoint.get_position()
+        
+        #End of finger
+        fingerEnd = finger.get_effector()
+        fingerEndPosition = fingerEnd.get_position()
+        
+        #Get Length of the Finger
+        fingerLength = finger.get_length()
 
-            # print 'Maya Finger Length : %s' % fingerLength
-            # print 'Leap Length Ratio: %s' % targetLengthRatio
-            # print 'Target Distance: %s' % targetLength
+        #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
+        targetLength = fingerLength*targetLengthRatio
 
-            #Create a vector from the direction vector scale by the targetDistance
-            #Add the base joint position to get out  target point location
-            newTargetPos =  fingerBasePosition + ((targetDir) * targetLength)
-            # print 'Target Position: %s' % newTargetPos
+        # print 'Maya Finger Length : %s' % fingerLength
+        # print 'Leap Length Ratio: %s' % targetLengthRatio
+        # print 'Target Distance: %s' % targetLength
 
-            #Set the Target Position 
-            finger.set_target_position(newTargetPos)
-    
+        #Create a vector from the direction vector scale by the targetDistance
+        #Add the base joint position to get out  target point location
+        newTargetPos =  fingerBasePosition + ((targetDir) * targetLength)
+        # print 'Target Position: %s' % newTargetPos
+
+        #Set the Target Position 
+        finger.set_target_position(newTargetPos)
+
     #Perform CCD now :)
     ccdTime = get_current_time()
     for finger in rightHand:

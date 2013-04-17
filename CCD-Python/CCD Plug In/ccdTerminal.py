@@ -166,15 +166,14 @@ class PAListener(Leap.Listener):
             palmPosition = hand.palm_position 
             # Check if the hand has any fingers
             fingers = hand.fingers
-            if not fingers.empty and len(fingers) == self.numFingers:
+            if (not fingers.empty):
 
                 #Get a BaseLine of length for the fingers if we need them
                 if self.captureBaseline:
                     self.capture_baseline_lengths(fingers)
                     return
 
-
-
+                #Frame control rate for the leap
                 if (not self.receiveFrame):
                     self.skipCount = self.skipCount - 1
                     print self.skipCount
@@ -182,28 +181,80 @@ class PAListener(Leap.Listener):
                         self.receiveFrame = True
                         self.skipCount = self.maxSkipCount
                     return;
-
                 self.receiveFrame = False
-
 
                 #Sort fingers to get order by 
                 fingers = self.sort_fingers_by_x(fingers)
                 #print fingers 
                 
                 #Queue for storing our target mapping data
-                targetQueue = []
-                for index in range(0, len(fingers)):
-                    finger = fingers[index]
+                targetQueue = self.get_full_hand_queue(fingers)
 
-                    mappedTarget = self.get_target_mapping(finger, index)
-                    #Add to our queue
-                    targetQueue.append(mappedTarget)
-                
-                #Take the queue and send all the data to maya!
-                #print targetQueue
+                #Adjust the ids based on the number of fingers
+                currentNumFingers = len(fingers)
+                if currentNumFingers == 1:
+                    print '1 - INDEX'
+                    targetQueue = self.get_pointer(targetQueue)
+
+                elif currentNumFingers == 2:
+                    print '2 - PEACE'
+                    targetQueue = self.get_peace_sign(targetQueue)
+                    return
+
+                elif currentNumFingers == 3:
+                    print '3 - ROCKER'
+                    targetQueue = self.get_rocker(targetQueue)
+                    #print targetQueue
+                    return
+
+                elif currentNumFingers == 4:
+                    targetQueue = self.get_spongebob(targetQueue)
+
+
+
                 self.mayaConnection.send_target_queue(targetQueue)
 
                 #print fingers
+
+    #set the order of the finger ids to be 1, 2 for index and middle
+    def get_peace_sign(self, targetQueue):
+        targetQueue[0]['id'] = 1
+        targetQueue[1]['id'] = 2
+        return targetQueue
+
+    #Set the order of the finger ids to be 0, 1,4 for thumb, index, pinky
+    def get_rocker(self, targetQueue):
+        targetQueue[0]['id'] = 0
+        targetQueue[1]['id'] = 1
+        targetQueue[2]['id'] = 2
+        return targetQueue
+
+    #Set the finger ID to be '1' for the index
+    def get_pointer(self, targetQueue):
+        targetQueue[0]['id'] = 1
+        return targetQueue
+
+    def get_spongebob(self, targetQueue):
+        targetQueue[0]['id'] = 1
+        targetQueue[1]['id'] = 2
+        targetQueue[2]['id'] = 3
+        targetQueue[3]['id'] = 4
+        return targetQueue
+
+
+    #gets a queue of finger data for a full hand
+    def get_full_hand_queue(self, fingers):
+        #Queue for storing our target mapping data
+        targetQueue = []
+        for index in range(0, len(fingers)):
+            finger = fingers[index]
+
+            mappedTarget = self.get_target_mapping(finger, index)
+            #Add to our queue
+            targetQueue.append(mappedTarget)
+        return targetQueue
+        #Take the queue and send all the data to maya!
+        #print targetQueue
 
     #Gets a target mapping for sending to maya 
     def get_target_mapping(self, finger, index):
