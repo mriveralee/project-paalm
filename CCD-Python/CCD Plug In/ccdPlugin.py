@@ -26,8 +26,8 @@ CURRENT_TIME_KEY = 'CURRENT_TIME'
 CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5,
     'CURRENT_TIME': 1,                   #Current Animation time
-    'INITIAL_MAX_TIME': 100,
-    'MAX_TIME': 100,
+    'INITIAL_MAX_TIME': 30000,
+    'MAX_TIME': 30000,
     'MIN_TIME': 1,
     'TIME_INCREMENT': 15
 }
@@ -190,6 +190,10 @@ class Finger(object):
         #currentTime = get_current_time()
         for joint in self.jointList:
             joint.set_keyframe(currentTime)
+
+        #Clear target keyframes
+        if (self.has_target()):
+            self.target.set_keyframe(currentTime)
         #Increment the Global Time
         self.increment_time()
     
@@ -198,9 +202,13 @@ class Finger(object):
         self.currentTime += CONFIG['TIME_INCREMENT']
 
     #Clears all key frames on the finger's joints from
-    def clear_keyframes(self, currentMaxTime=1):
+    def clear_keyframes(self, currentMaxTime=CONFIG['MAX_TIME']):
+
+        #currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
+        #CONFIG['MAX_TIME'] = currentMaxTime
+        
         self.currentTime = 1
-        currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
+
         for joint in self.jointList:
             #print joint
             joint.clear_keyframes(currentMaxTime)
@@ -212,7 +220,7 @@ class Finger(object):
 
         CONFIG[CURRENT_TIME_KEY] = CONFIG['MIN_TIME']
         CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
-        print CONFIG['MAX_TIME']
+        #print CONFIG['MAX_TIME']
         pm.playbackOptions(maxTime= CONFIG['MAX_TIME'])
 
     #Sets the target object that is in maya for this finger
@@ -374,7 +382,7 @@ class Finger(object):
         else:
             self.currentTime = keyframeTime
             #Distance Threshold for ending the ccd
-            DISTANCE_THRESHOLD = 0.01
+            DISTANCE_THRESHOLD = 0.1
             #Number of iterations to perform per finger
             iterations = 40
 
@@ -514,7 +522,9 @@ class Joint(object):
     def set_keyframe(self, currentTime):
         pm.setKeyframe(self.mayaID, t=currentTime)
 
-    def clear_keyframes(self, currentMaxTime=1):
+    def clear_keyframes(self, currentMaxTime):
+        #currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
+        #print currentMaxTime
         pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
 
     #Get Composite Matrix - include all rotation, translation values
@@ -683,7 +693,7 @@ def get_max_time():
 
 def increment_time():
     CONFIG[CURRENT_TIME_KEY] = CONFIG[CURRENT_TIME_KEY] + CONFIG['TIME_INCREMENT']
-    pm.playbackOptions(loop='once', maxTime=CONFIG[CURRENT_TIME_KEY])
+    pm.playbackOptions(loop='once', maxTime=CONFIG['MAX_TIME'])
     currentTime = get_current_time()
     maxTimeBuffer =  get_max_time()-10
     if (currentTime >= maxTimeBuffer):
@@ -697,13 +707,17 @@ def increase_max_time():
 def reset_time(): 
     #Clear All the key frames for every joint
     currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
-    for jointKey in JOINTS: 
+    #print 'woo'
+    #print currentMaxTime
+    for hand in HANDS: 
         #print jointKey 
-        pm.cutKey(jointKey, time=(1, currentMaxTime), option='keys')
-    pm.refresh(force=True)
+        #pm.cutKey(jointKey, time=(1, currentMaxTime), option='keys')
+        for finger in hand:
+            finger.clear_keyframes()
+            pm.refresh(force=True)
     CONFIG[CURRENT_TIME_KEY] = CONFIG['MIN_TIME']
     CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
-    pm.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
+    #pm.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
 
 
 #############################################################
@@ -758,8 +772,9 @@ def receive_target_queue(targetQueue):
     #Perform CCD now :)
     ccdTime = get_current_time()
     for finger in rightHand:
-        finger.perform_ccd(ccdTime)
+        #finger.perform_ccd(ccdTime)
         #Refresh Display
+        finger.set_keyframe(ccdTime)
         pm.refresh(force=True)
 
     #Increase Animation Timer
@@ -926,7 +941,6 @@ def FINGER_TEST():
     thumbFinger.set_target(thumbTarget)
 
     #Clear all set key frames
-    thumbFinger.clear_keyframes()
     FINGERS.append(thumbFinger)
 
     #### INDEX FINGER #####
@@ -958,7 +972,6 @@ def FINGER_TEST():
     indexFinger.set_target(indexTarget)
 
     #Clear all set key frames
-    indexFinger.clear_keyframes()
     FINGERS.append(indexFinger)
 
     #finger1.perform_ccd()
@@ -1023,7 +1036,6 @@ def FINGER_TEST():
     ringFinger.set_target(ringTarget)
 
     #Clear all set key frames
-    ringFinger.clear_keyframes()
     FINGERS.append(ringFinger)
 
     ##### PINKY FINGER #####
@@ -1054,19 +1066,197 @@ def FINGER_TEST():
     pinkyFinger.set_target(pinkyTarget)
 
     #Clear all set key frames
-    pinkyFinger.clear_keyframes()
     FINGERS.append(pinkyFinger)
 
     ## ADD ALL FINGERS as a HAND
     HANDS.append(FINGERS)
 
-
+    #reset_time()
+    for finger in FINGERS:
+        #Set initial keyframes
+        #print 'settting key frame'
+        finger.clear_keyframes()
+        finger.set_keyframe(1)
+    increment_time()
 
 ## RUN THE FINGER TEST
-FINGER_TEST()
+#FINGER_TEST()
+
+
+############################################################
+#################### IK HANDLE TEST ########################
+############################################################
+def IK_FINGER_TEST():
+    #Close open ports & open our current port
+    open_command_port()
+
+    ##### THUMB FINGER ####
+    thumbFinger = Finger('R-ThumbFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j3 = Joint('joint3')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j4 = Joint('joint4')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j5 = Joint('joint5')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #Target Position
+    thumbTarget = Target('thumbIKHandle')
+
+    #Add ordered joint chain to finger 1
+    thumbFinger.add_joints([j3,j4,j5])
+
+    #Set the target for the finger
+    thumbFinger.set_target(thumbTarget)
+
+    #Clear all set key frames
+    FINGERS.append(thumbFinger)
+
+    #### INDEX FINGER #####
+    indexFinger = Finger('R-IndexFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j6 = Joint('joint6')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j7 = Joint('joint7')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j8 = Joint('joint8')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
+    j9 = Joint('joint9')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    indexTarget = Target('indexIKHandle')
+
+
+    #Add ordered joint chain to finger 1
+    indexFinger.add_joints([j6,j7,j8,j9])
+
+    #Set the target for the finger
+    indexFinger.set_target(indexTarget)
+
+    #Clear all set key frames
+    FINGERS.append(indexFinger)
+
+    #finger1.perform_ccd()
+
+
+    ##### MIDDLE FINGER #####
+    middleFinger = Finger('R-MiddleFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j10 = Joint('joint10')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j11 = Joint('joint11')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j12 = Joint('joint12')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
+    j13 = Joint('joint13')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    middleTarget = Target('middleIKHandle')
+
+    #Add ordered joint chain to finger 1
+    middleFinger.add_joints([j10,j11,j12,j13])
+
+    #Set the target for the finger
+    middleFinger.set_target(middleTarget)
+
+    #Clear all set key frames
+    middleFinger.clear_keyframes()
+    FINGERS.append(middleFinger)
+
+    ##### RING FINGER #####
+    ringFinger = Finger('R-RingFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j14 = Joint('joint14')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j15 = Joint('joint15')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j16 = Joint('joint16')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
+    j17 = Joint('joint17')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    ringTarget = Target('ringIKHandle')
+
+    #Add ordered joint chain to finger 1
+    ringFinger.add_joints([j14,j15,j16,j17])
+
+    #Set the target for the finger
+    ringFinger.set_target(ringTarget)
+
+    #Clear all set key frames
+    FINGERS.append(ringFinger)
+
+    ##### PINKY FINGER #####
+    pinkyFinger = Finger('R-PinkyFinger')
+    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    j18 = Joint('joint18')
+    #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
+    
+    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    j19 = Joint('joint19')
+    #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
+     
+    #Distal Interphalangeal Joint (DIJ) & Constrains
+    j20 = Joint('joint20')
+    #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
+
+    #End Effector Cannot move at all
+    j21 = Joint('joint21')
+    #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
+    
+    #Target Position
+    pinkyTarget = Target('pinkyIKHandle')
+
+    #Add ordered joint chain to finger 1
+    pinkyFinger.add_joints([j18,j19,j20,j21])
+
+    #Set the target for the finger
+    pinkyFinger.set_target(pinkyTarget)
+
+    #Clear all set key frames
+    FINGERS.append(pinkyFinger)
+
+    ## ADD ALL FINGERS as a HAND
+    HANDS.append(FINGERS)
+
+    #reset_time()
+    for finger in FINGERS:
+        #Set initial keyframes
+        #print 'settting key frame'
+        finger.clear_keyframes()
+        finger.set_keyframe(1)
+    increment_time()
+
+## RUN THE FINGER TEST
+IK_FINGER_TEST()
+
 
 ############################################################
 ############################################################
 ############################################################
-
 ##################### END SCRIPT #######################
