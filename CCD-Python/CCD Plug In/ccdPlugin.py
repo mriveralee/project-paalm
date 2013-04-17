@@ -1175,7 +1175,7 @@ def IK_FINGER_TEST():
     middleFinger.add_joints([j10,j11,j12,j13])
 
     #Set the target for the finger
-  #  middleFinger.set_target(middleTarget)
+    middleFinger.set_target(middleTarget)
 
     #Clear all set key frames
     middleFinger.clear_keyframes()
