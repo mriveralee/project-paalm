@@ -57,7 +57,7 @@ class MayaConnection():
 #Demos
 IS_TRACKING_DEMO = True
 MAYA_EFFECTOR_LENGTH = 1
-FRAME_SLEEP_TIME = 0.2
+FRAME_SLEEP_TIME = 0.0
 
 
 ############################################################
@@ -107,9 +107,13 @@ class PAListener(Leap.Listener):
         self.is_peforming_ccd = False
         self.fingerData = []
         self.captureBaseline = True
-        self.maxNumBaselineFrames = 300
+        self.maxNumBaselineFrames = 500
         self.numBaselineFrames = 0
         self.numFingers = 5
+        self.receiveFrame = True
+        self.maxSkipCount = 30
+        self.skipCount = self.maxSkipCount
+
 
         #Initialize finger data
         self.init_fingers()
@@ -169,6 +173,19 @@ class PAListener(Leap.Listener):
                     self.capture_baseline_lengths(fingers)
                     return
 
+
+
+                if (not self.receiveFrame):
+                    self.skipCount = self.skipCount - 1
+                    print self.skipCount
+                    if (self.skipCount == 0):
+                        self.receiveFrame = True
+                        self.skipCount = self.maxSkipCount
+                    return;
+
+                self.receiveFrame = False
+
+
                 #Sort fingers to get order by 
                 fingers = self.sort_fingers_by_x(fingers)
                 #print fingers 
@@ -185,6 +202,7 @@ class PAListener(Leap.Listener):
                 #Take the queue and send all the data to maya!
                 #print targetQueue
                 self.mayaConnection.send_target_queue(targetQueue)
+
                 #print fingers
 
     #Gets a target mapping for sending to maya 
