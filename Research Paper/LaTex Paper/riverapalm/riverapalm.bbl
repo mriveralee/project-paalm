@@ -1,0 +1,44 @@
+\begin{thebibliography}{\protect\citename{Hovet et~al\mbox{.} }2012}
+
+\bibitem[\protect\citename{Cyberglove }2013]{CYB}
+{\sc Cyberglove}, 2013.
+\newblock Cyberglove systems: http://www.cyberglovesystems.com/.
+
+\bibitem[\protect\citename{Erol et~al\mbox{.} }2007]{EBN07}
+{\sc Erol, A., Bebis, G., Nicolescu, M., Boyle, R.~D., and Twombly, X.}
+\newblock 2007.
+\newblock Vision-based hand pose estimation: A review.
+\newblock {\em Computer Vision and Image Understanding 108,1-2\/}, 52--57.
+
+\bibitem[\protect\citename{Hovet et~al\mbox{.} }2012]{HRM12}
+{\sc Hovet, L., Ryall, K., McDonnell, R., and O'Sulllivan, C.}
+\newblock 2012.
+\newblock Sleight of hand: perception of finger motion from reduced marker
+  sets.
+\newblock {\em Proceedings of the ACM SIGGRAPH Symposium on Interactive 3D
+  Graphics and Games 79-86,2\/}.
+
+\bibitem[\protect\citename{Kim et~al\mbox{.} }2012]{KHI12}
+{\sc Kim, D., Hilliges, O., Iazddi, S., Butler, A., Chen, J., Oikonomidis, I.,
+  and Oliver, P.}
+\newblock 2012.
+\newblock Digits: Free 3d interactions anywhere using a wrist-worn gloveless
+  sensor dithered color quantization.
+\newblock {\em ACM UIST\/}, 167--176.
+
+\bibitem[\protect\citename{{Leap Motion} }2013]{LEA}
+{\sc {Leap Motion}}, 2013.
+\newblock Leap motion, inc.: http://www.leapmotion.com/product.
+
+\bibitem[\protect\citename{Vicon }2013]{VIC}
+{\sc Vicon}, 2013.
+\newblock Vicon motion capture systems: http://www.vicon.com/.
+
+\bibitem[\protect\citename{Zhao et~al\mbox{.} }2012]{ZCX12}
+{\sc Zhao, W., Chai, J., and Xu, Y.}
+\newblock 2012.
+\newblock Combining marker-based mocap and rgb-d camera for acquiring
+  high-fidelity hand motion data.
+\newblock {\em ACM SIGGRAPH\/}, 33--42.
+
+\end{thebibliography}
