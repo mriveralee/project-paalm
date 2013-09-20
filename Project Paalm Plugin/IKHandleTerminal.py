@@ -176,7 +176,7 @@ class PAListener(Leap.Listener):
                 #Frame control rate for the leap
                 if (not self.receiveFrame):
                     self.skipCount = self.skipCount - 1
-                    print self.skipCount
+                    # print self.skipCount
                     if (self.skipCount == 0):
                         self.receiveFrame = True
                         self.skipCount = self.maxSkipCount

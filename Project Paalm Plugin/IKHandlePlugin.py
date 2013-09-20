@@ -739,14 +739,17 @@ def receive_target_queue(targetQueue):
         if (DEMO_TYPE == 3):
             #Octopus Demo
             handle_octo_input(rightHand, target, octoCount)
-            octoCount = octoCount + 1
+
+            if (octoCount == 0 or octoCount == 1):
+                octoCount = octoCount + 1
+            else:
+                octoCount = octoCount + 2
             continue
         elif (DEMO_TYPE == 2 and USE_CHARACTER and len(targetQueue) > 2):
             count = count + 1
             if (count > 2):
                 break;
-
-        
+ 
         fingerID = target['id']
 
         #There is an id to match out finger id in our maya hand
@@ -797,16 +800,18 @@ def receive_target_queue(targetQueue):
 
 
 def handle_octo_input(rightHand, target, octoCount):
-        fingerID = octoCount
         maxRange = 2
-        if (octoCount == 4):
+        if (octoCount == 0 or octoCount == 1):
             maxRange = 1
-
+        else:
+            print 'cool'
+        print 'OC: ' +str(octoCount)
         #There is an id to match out finger id in our maya hand
         #if (fingerID < numFingers):
         for i in range(0, maxRange):
-
+            #print i 
             fingerID = octoCount + i
+            print fingerID
             #Get the target Direction & lengthRatio
             tDir = target['dir']
             targetDir = Leap.Vector(tDir[0], tDir[1], tDir[2])
@@ -1129,7 +1134,7 @@ def IK_OCTO_TEST():
     frLeg.add_joints([fr0,fr1,fr2,fr3])
 
     #Set the target for the finger
-    frLeg.set_target(frLegTarget)
+    frLeg.set_target(frTarget)
 
     #Clear all set key frames
     FINGERS.append(frLeg)
@@ -1288,14 +1293,14 @@ def IK_OCTO_TEST():
     increment_time()
 
 
-
+    print FINGERS
 
 
 #################################################
 ##################### DEMO ######################
 #################################################
 
-
+#1 is normal | 2 is character | 3 is octo
 DEMO_TYPE = 1
 
 USE_CHARACTER = True
@@ -1308,9 +1313,6 @@ elif (DEMO_TYPE == 3):
 else:
     ## RUN THE FINGER TEST
     IK_FINGER_TEST()
-
-
-
 
 
 
