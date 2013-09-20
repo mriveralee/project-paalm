@@ -29,7 +29,8 @@ CONFIG = {
     'INITIAL_MAX_TIME': 30000,
     'MAX_TIME': 60000,
     'MIN_TIME': 1,
-    'TIME_INCREMENT': 15
+    'TIME_INCREMENT': 15,
+    'PALM_INDEX': 9999
 }
 
 #############################################################
@@ -51,88 +52,62 @@ def open_command_port():
 ############################ HAND ##########################
 ############################################################
 class Hand(object):
-    def __init(self, mayaID, fingerList=[], palm=None, wrist=None):
-        self.mayaID = mayaID
-        self.addFingers(fingerList)
-        self.hasWrist = False
-        self.hasPalm = False
-        self.set_wrist(wrist)
-        self.set_palm(palm)
+    def __init__(self, handID, fingers=[], palm=None):
+        self.handID = handID
+        self.fingers = fingers
+        self.palm = palm
 
-    #Returns the output that is returned when using the print function
+    # Returns the output that is returned when using the print function
     def __str__(self):
-        return '<# HandID:\'%s\' # %s #>' % (self.mayaID, self.fingerList)
+        return '<# HandID:\'%s\' # %s #>' % (self.handID, self.fingerList)
     
     def __repr__(self):
         return self.__str__()
 
-    #Adds a list of fingers to this hand
-    def add_fingers(self, fingerList):
-        success = True
-        for finger in fingerList:
-            success = self.addFinger(finger) and success
-        return success
+    # Sets a list of fingers to this hand
+    def set_fingers(self, fingers):
+        self.fingers = fingers
 
-    #Adds a finger to this hand
+    # Adds a finger to this fingers list
     def add_finger(self, finger):
-        if (isinstance(finger, Joint)):
-            self.fingerList.append(finger)
-            return True
-        else:
-            return False
+        self.fingers.append(finger) 
 
-    #Sets the wrist on the hand
-    def set_wrist(self, wrist):
-        if (isinstance(wrist, Joint)):
-            self.wrist = wrist
-            self.hasWrist = True
-        else:
-            self.hasWrist = False
-    
-    #Returns true if this hand has a wrist
-    def has_wrist(self):
-        return self.hasWrist
+    # Returns true if the hand has at least 1 finger
+    def has_fingers(self):
+        return (len(self.fingers) > 0)
 
     #Sets the palm on the hand
     def set_palm(self, palm):
         if (isinstance(palm, Joint)):
             self.palm = palm
-            self.hasPalm = True
-        else:
-            self.hasPalm = False
 
     #Returns true if this hand has a palm
     def has_palm(self):
-        return self.hasPalm
+        return self.palm is not None
 
-    #Compute length between the palm and wrist
-    def calculate_palm_to_wrist_length(self):
-        if (self.has_palm() and self.has_wrist()):
-            palmToWristLength = (self.palm.get_position()-self.wrist.get_position()).magnitude
-            return palmToWristLength
-        else:
-            #No length
-            return 0
-
-    def perform_ccd(self):
-        #For each finger 
-        print 'unimplemented ccd for hand'
-        
+    # #Compute length between the palm and wrist
+    # def calculate_palm_to_wrist_length(self):
+    #     if (self.has_palm() and self.has_wrist()):
+    #         palmToWristLength = (self.palm.get_position()-self.wrist.get_position()).magnitude
+    #         return palmToWristLength
+    #     else:
+    #         #No length
+    #         return 0
 
     #Set the target positions for their corresponding fingers by 
-    def update_target_positions(self, targetPositions):
-        #For each Target position perform CCD on that finger
-        for tp in targetPositions:
-            fingerIndex = tp['fingerIndex']
-            #Check if the finger is valid for this hand
-            if (fingerIndex < len(self.fingerList)):
-                #Get the finger corresponding to this index
-                finger = self.fingerList[fingerIndex]
-                #Set the target position for this finger
-                finger.set_target_position(tp)
-            else:
-                #Do nothing for that index
-                print 'Invalid finger index'
+    # def update_target_positions(self, targetPositions):
+    #     #For each Target position perform CCD on that finger
+    #     for tp in targetPositions:
+    #         fingerIndex = tp['fingerIndex']
+    #         #Check if the finger is valid for this hand
+    #         if (fingerIndex < len(self.fingerList)):
+    #             #Get the finger corresponding to this index
+    #             finger = self.fingerList[fingerIndex]
+    #             #Set the target position for this finger
+    #             finger.set_target_position(tp)
+    #         else:
+    #             #Do nothing for that index
+    #             print 'Invalid finger index'
 
 
 ############################################################
@@ -293,7 +268,7 @@ class Finger(object):
     def calculate_palm_distance(self,palm):
         numJoints = self.get_num_joints()
         if (numJoints > 0):
-            palmDistance = (palm.get_position()-self.jointList[0]).magnitude
+            palmDistance = (palm.get_position() - self.jointList[0]).magnitude
             return palmDistance
         else:
             return 0
@@ -316,7 +291,7 @@ class Finger(object):
         # isFirst = True
 
         # #Sum of Segment lengths
-        # chainLength = 0;
+        # chainLength = 0
 
         # #Include palm and wrist vect mag
         # chainLength = (palmPos - wristPos).magnitude
@@ -355,7 +330,7 @@ class Finger(object):
                 chainLength += segmentLength
     
         #Add an extension so the mapping length is not directly on the sphere
-        # chainExtension = 5;
+        # chainExtension = 5
         # JOINT_CHAIN_LENGTH +=  chainExtension
 
         #Set our new Chain length
@@ -680,6 +655,49 @@ class Target(Joint):
 
     #TODO CREATE SPHERE IN MAYA FOR FINGER
 
+###########################################################
+########################### PALM ##########################
+###########################################################
+class Palm(Joint):
+    #Create a joint
+    def __init__(self, mayaID):
+        self.mayaID = mayaID
+        self.pos = Leap.Vector(0,0,0)
+        self.rot = Leap.Vector(0,0,0)
+        self.update()
+
+    #Returns the output that is returned when using the print function
+    def __str__(self):
+        return 'PalmID:\'%s\'' % (self.mayaID)
+
+    def __repr__(self):
+        return self.__str__()
+
+    #Retrieves updated position and rotation information from Maya
+    def update(self):
+        # Get position of joint in Maya (world-space)
+        mayaPos = pm.xform(self.mayaID, query=True, ws=True, t=True) #//in an array [x,y,z] 
+        # Update position reference for joint
+        self.pos = Leap.Vector(mayaPos[0], mayaPos[1], mayaPos[2])
+        
+        # Get Rotatation of joint in Maya
+        mayaRot = pm.xform(self.mayaID, query=True, rotation=True)   
+        self.rot = Leap.Vector(mayaRot[0], mayaRot[1], mayaRot[2])
+
+
+    #Get the position of this joint in Maya 
+    def get_position(self):
+        return self.pos
+
+    #Set the position of this joint in Maya 
+    def set_position(self, position):
+        pm.xform(self.mayaID, t=(position[0],position[1], position[2]), ws=True)
+        self.pos = position
+        return True
+
+    #Return this joint's current position in World Space
+    def get_rot(self):
+        return self.rot
 
 #############################################################
 ############## ANIMATION TIME FUNCTIONALITY #################
@@ -723,23 +741,22 @@ def reset_time():
 #############################################################
 ################## PORT RECEIVING FUNCTIONS #################
 #############################################################
-#Interfacing with a command port that sends target positon updates for
+# Interfacing with a command port that sends target positon updates for
 # each finger. <targetQueue> is an array of dictionaries with each one 
 # containing a finger 'id', a 'length_ratio', and and 'dir' 
 # (the directional vector)
 def receive_target_queue(targetQueue):
-    #Right Hand
+    #Right Hand 
     rightHand = HANDS[0]
-    numFingers = len(rightHand)
+    rightPalm = rightHand.palm
+    numFingers = len(rightHand.fingers)
     count = 0
     octoCount = 0
-    #Assume using direction
+    # Assume using direction
     for target in targetQueue:
-
         if (DEMO_TYPE == 3):
             #Octopus Demo
-            handle_octo_input(rightHand, target, octoCount)
-
+            handle_octo_input(rightHand.fingers, target, octoCount)
             if (octoCount == 0 or octoCount == 1):
                 octoCount = octoCount + 1
             else:
@@ -748,58 +765,69 @@ def receive_target_queue(targetQueue):
         elif (DEMO_TYPE == 2 and USE_CHARACTER and len(targetQueue) > 2):
             count = count + 1
             if (count > 2):
-                break;
- 
-        fingerID = target['id']
+                break
 
-        #There is an id to match out finger id in our maya hand
-        #if (fingerID < numFingers):
+        # If we have palm data, update our palm
+        if (target['id'] == CONFIG['PALM_INDEX']):
+            palmNormal = target['normal']
+            # Update the target palm position
+            palmPosition = target['position']
+            rightPalm.set_position(palmPosition)
+            continue
+        else:
+            # We have a finger to handle
+            fingerID = target['id']
 
-        #Get the target Direction & lengthRatio
-        tDir = target['dir']
-        targetDir = Leap.Vector(tDir[0], tDir[1], tDir[2])
-        targetLengthRatio = target['length_ratio']
+            #There is an id to match out finger id in our maya hand
+            #if (fingerID < numFingers):
 
-        #Index Finger and Base Position and end joint
-        finger = rightHand[fingerID]
-        fingerBaseJoint = finger.get_joints()[0]
-        fingerBasePosition = fingerBaseJoint.get_position()
-        
-        #End of finger
-        fingerEnd = finger.get_effector()
-        fingerEndPosition = fingerEnd.get_position()
-        
-        #Get Length of the Finger
-        fingerLength = finger.get_length()
+            #Get the target Direction & lengthRatio
+            tDir = target['dir']
+            targetDir = Leap.Vector(tDir[0], tDir[1], tDir[2])
+            targetLengthRatio = target['length_ratio']
 
-        #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
-        targetLength = fingerLength*targetLengthRatio
+            #Index Finger and Base Position and end joint
+            finger = rightHand.fingers[fingerID]
+            fingerBaseJoint = finger.get_joints()[0]
+            fingerBasePosition = fingerBaseJoint.get_position()
+            
+            #End of finger
+            fingerEnd = finger.get_effector()
+            fingerEndPosition = fingerEnd.get_position()
+            
+            #Get Length of the Finger
+            fingerLength = finger.get_length()
 
-        # print 'Maya Finger Length : %s' % fingerLength
-        # print 'Leap Length Ratio: %s' % targetLengthRatio
-        # print 'Target Distance: %s' % targetLength
+            #Get the ratio of finger length from the Leap (with the baseline) and use it for our Maya Length
+            targetLength = fingerLength * targetLengthRatio
 
-        #Create a vector from the direction vector scale by the targetDistance
-        #Add the base joint position to get out  target point location
-        newTargetPos =  fingerBasePosition + ((targetDir) * targetLength)
-        # print 'Target Position: %s' % newTargetPos
+            # print 'Maya Finger Length : %s' % fingerLength
+            # print 'Leap Length Ratio: %s' % targetLengthRatio
+            # print 'Target Distance: %s' % targetLength
 
-        #Set the Target Position 
-        finger.set_target_position(newTargetPos)
+            #Create a vector from the direction vector scale by the targetDistance
+            #Add the base joint position to get out  target point location
+            newTargetPos =  fingerBasePosition + ((targetDir) * targetLength)
+            # print 'Target Position: %s' % newTargetPos
 
-    #Perform CCD now :)
-    ccdTime = get_current_time()
-    for finger in rightHand:
+            #Set the Target Position 
+            finger.set_target_position(newTargetPos)
+
+    # Perform Inverse Kinematics with currentTime
+    currentTime = get_current_time()
+    # Set keyframe for palm
+    rightPalm.set_keyframe(currentTime)
+    # Set Key frame for a finger
+    for finger in rightHand.fingers:
         #finger.perform_ccd(ccdTime)
         #Refresh Display
-        finger.set_keyframe(ccdTime)
+        finger.set_keyframe(currentTime)
         pm.refresh(force=True)
-
     #Increase Animation Timer
     increment_time()
 
 
-def handle_octo_input(rightHand, target, octoCount):
+def handle_octo_input(rightHandFingers, target, octoCount):
         maxRange = 2
         if (octoCount == 0 or octoCount == 1):
             maxRange = 1
@@ -884,59 +912,60 @@ def IK_FINGER_TEST():
 
     ##### THUMB FINGER ####
     thumbFinger = Finger('R-ThumbFinger')
-    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    
+    # Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
     j3 = Joint('joint3')
     #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
     
-    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    # Proximal Interphalangeal Joint (PIJ) & Constraints
     j4 = Joint('joint4')
     #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
      
-    #Distal Interphalangeal Joint (DIJ) & Constrains
+    # Distal Interphalangeal Joint (DIJ) & Constrains
     j5 = Joint('joint5')
     #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
 
-    #Target Position
+    # Target Position
     thumbTarget = Target('thumbIKHandle')
 
-    #Add ordered joint chain to finger 1
+    # Add ordered joint chain to finger 1
     thumbFinger.add_joints([j3,j4,j5])
 
-    #Set the target for the finger
+    # Set the target for the finger
     thumbFinger.set_target(thumbTarget)
 
-    #Clear all set key frames
+    # Clear all set key frames
     FINGERS.append(thumbFinger)
 
     #### INDEX FINGER #####
     indexFinger = Finger('R-IndexFinger')
-    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    
+    # Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
     j6 = Joint('joint6')
     #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
     
-    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    # Proximal Interphalangeal Joint (PIJ) & Constraints
     j7 = Joint('joint7')
     #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
      
-    #Distal Interphalangeal Joint (DIJ) & Constrains
+    # Distal Interphalangeal Joint (DIJ) & Constrains
     j8 = Joint('joint8')
     #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
 
-    #End Effector Cannot move at all
+    # End Effector Cannot move at all
     j9 = Joint('joint9')
     #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
     
-    #Target Position
+    # Target Position
     indexTarget = Target('indexIKHandle')
 
-
-    #Add ordered joint chain to finger 1
+    # Add ordered joint chain to finger 1
     indexFinger.add_joints([j6,j7,j8,j9])
 
-    #Set the target for the finger
+    # Set the target for the finger
     indexFinger.set_target(indexTarget)
 
-    #Clear all set key frames
+    # Clear all set key frames
     FINGERS.append(indexFinger)
 
     #finger1.perform_ccd()
@@ -944,107 +973,121 @@ def IK_FINGER_TEST():
 
     ##### MIDDLE FINGER #####
     middleFinger = Finger('R-MiddleFinger')
-    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    
+    # Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
     j10 = Joint('joint10')
     #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
     
-    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    # Proximal Interphalangeal Joint (PIJ) & Constraints
     j11 = Joint('joint11')
     #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
      
-    #Distal Interphalangeal Joint (DIJ) & Constrains
+    # Distal Interphalangeal Joint (DIJ) & Constrains
     j12 = Joint('joint12')
     #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
 
-    #End Effector Cannot move at all
+    # End Effector Cannot move at all
     j13 = Joint('joint13')
     #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
     
-    #Target Position
+    # Target Position
     middleTarget = Target('middleIKHandle')
 
-    #Add ordered joint chain to finger 1
+    # Add ordered joint chain to finger 1
     middleFinger.add_joints([j10,j11,j12,j13])
 
-    #Set the target for the finger
+    # Set the target for the finger
     middleFinger.set_target(middleTarget)
 
-    #Clear all set key frames
+    # Clear all set key frames
     middleFinger.clear_keyframes()
     FINGERS.append(middleFinger)
 
     ##### RING FINGER #####
     ringFinger = Finger('R-RingFinger')
-    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    
+    # Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
     j14 = Joint('joint14')
     #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
     
-    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    # Proximal Interphalangeal Joint (PIJ) & Constraints
     j15 = Joint('joint15')
     #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
      
-    #Distal Interphalangeal Joint (DIJ) & Constrains
+    # Distal Interphalangeal Joint (DIJ) & Constrains
     j16 = Joint('joint16')
     #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
 
-    #End Effector Cannot move at all
+    # End Effector Cannot move at all
     j17 = Joint('joint17')
     #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
     
-    #Target Position
+    # Target Position
     ringTarget = Target('ringIKHandle')
 
-    #Add ordered joint chain to finger 1
+    # Add ordered joint chain to finger 1
     ringFinger.add_joints([j14,j15,j16,j17])
 
-    #Set the target for the finger
+    # Set the target for the finger
     ringFinger.set_target(ringTarget)
 
-    #Clear all set key frames
+    # Clear all set key frames
     FINGERS.append(ringFinger)
 
     ##### PINKY FINGER #####
     pinkyFinger = Finger('R-PinkyFinger')
-    #Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
+    
+    # Knuckle - Metacarpal Phalangeal Joint (MPJ) & Constraints
     j18 = Joint('joint18')
     #j6.set_rotation_limits(0, 0, -40, 60, -11, 11)
     
-    #Proximal Interphalangeal Joint (PIJ) & Constraints
+    # Proximal Interphalangeal Joint (PIJ) & Constraints
     j19 = Joint('joint19')
     #j7.set_rotation_limits(0, 0, 0, 0, 0, 90)
      
-    #Distal Interphalangeal Joint (DIJ) & Constrains
+    # Distal Interphalangeal Joint (DIJ) & Constrains
     j20 = Joint('joint20')
     #j8.set_rotation_limits(0, 0, 0, 0, 0, 90)
 
-    #End Effector Cannot move at all
+    # End Effector Cannot move at all
     j21 = Joint('joint21')
     #j9.set_rotation_limits(0, 0, 0, 0, 0, 0)
     
-    #Target Position
+    # Target Position
     pinkyTarget = Target('pinkyIKHandle')
 
-    #Add ordered joint chain to finger 1
+    # Add ordered joint chain to finger 1
     pinkyFinger.add_joints([j18,j19,j20,j21])
 
-    #Set the target for the finger
+    # Set the target for the finger
     pinkyFinger.set_target(pinkyTarget)
 
-    #Clear all set key frames
+    # Add pinky to list of finger
     FINGERS.append(pinkyFinger)
 
-    ## ADD ALL FINGERS as a HAND
-    HANDS.append(FINGERS)
+    #### PALM #####
+    palm = Palm('palm_joint')
 
+    ### Make Right Hand from Fingers and palm ###
+    rightHand = Hand('Right-Hand', FINGERS, palm)
+
+    ## Add right hand to list of hands
+    HANDS.append(rightHand)
+    
+    # Clear all set key frames for palm
+    palm.clear_keyframes(CONFIG['MAX_TIME'])
+    palm.set_keyframe(1)
+    
+    # Clear all set key frames for fingers
     #reset_time()
     for finger in FINGERS:
         #Set initial keyframes
         #print 'settting key frame'
         finger.clear_keyframes()
         finger.set_keyframe(1)
+
+    # Increment key frame time
     increment_time()
-
-
 
 ###################################################################
 #################### IK_CHARACTER HANDLE TEST ########################

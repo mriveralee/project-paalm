@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*- 
 
-#In Maya run MEL command 
-#commandPort -name ":6001";
+#I n Maya run MEL command 
+#commandPort -name ":6001"
 
 
 import Leap, sys
@@ -19,15 +19,15 @@ import time
 # Basic Socket connection to Maya command port with
 # interface for making MEL commands in python
 
-#Socket Information
+# Socket Information
 import socket
 
-#In Maya run MEL command 
-#commandPort -pre trs -n ":9100";
-#commandPort -name ":6001"; -> Send Port
-#commandPort -n ":6002";  -> Receive Poort
+# In Maya run MEL command 
+#commandPort -pre trs -n ":9100"
+#commandPort -name ":6001" -> Send Port
+#commandPort -n ":6002"  -> Receive Poort
 
-#Socket Information
+# Socket Information
 MAYA_PORT = 6001
 
 class MayaConnection():
@@ -37,34 +37,37 @@ class MayaConnection():
         self.maya.connect(('localhost', PORT))
         self.port = PORT
 
-    #Close the socket port
+    # Close the socket port
     def close(self):
         self.maya.close()
              
-    #Sends a tip position update to Maya to trigger a perform_ccd() action 
+    # Sends a tip position update to Maya to trigger a perform_ccd() action 
     def send_tip_position(self, tpX, tpY, tpZ, lengthRatio):
         command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+","+str(lengthRatio)+")\")\n"
         self.maya.send(command)
         #print command
 
-    #Sends a target queue update to Maya to trigger a perform_ccd() action 
+    # Sends a target queue update to Maya to trigger a perform_ccd() action 
     def send_target_queue(self, targetQueue):
         command = 'python(\"receive_target_queue(%s)\")\n' % targetQueue
         #command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+","+str(lengthRatio)+")\")\n"
+        # print targetQueue
         self.maya.send(command)
         #print command
 
-#Demos
+# DEMO VARS
 IS_TRACKING_DEMO = True
 MAYA_EFFECTOR_LENGTH = 1
 FRAME_SLEEP_TIME = 0.0
 
+# MAIN VARS
+PALM_INDEX = 9999
 
 ############################################################
 ####################### FINGER DATA ########################
 ############################################################
-#Finger data just stores information about our max finger Lengths
-#With a reference to a finger ID 0 == Thumb, 4 == Pinky
+# Finger data just stores information about our max finger Lengths
+# With a reference to a finger ID 0 == Thumb, 4 == Pinky
 
 class FingerData():
     def __init__(self, index):
@@ -79,7 +82,7 @@ class FingerData():
         return '{ "id": %s, "baseLength": %s}' % (self.index, self.baseLength)
 
     def add_base_length(self, baseLength):
-        #print 'index: %s, sum_lengths: %s, count: %s' % (self.index, self.sumBaseLengths, self.baseLengthCount)
+        # print 'index: %s, sum_lengths: %s, count: %s' % (self.index, self.sumBaseLengths, self.baseLengthCount)
         self.sumBaseLengths +=  baseLength
         self.baseLengthCount += 1
 
@@ -97,13 +100,13 @@ class FingerData():
 ############################################################
 ################ PHALANGEAL ANGLE LISTENNER ################
 ############################################################
-#Listener for phaleangeal angle approximator
+# Listener for phaleangeal angle approximator
 
 class PAListener(Leap.Listener):
 
     #On initilization of listener
     def on_init(self, controller):
-        #Make a new Maya Connection on port 6001
+        # Make a new Maya Connection on port 6001
         self.is_peforming_ccd = False
         self.fingerData = []
         self.captureBaseline = True
@@ -113,96 +116,105 @@ class PAListener(Leap.Listener):
         self.receiveFrame = True
         self.maxSkipCount = 30
         self.skipCount = self.maxSkipCount
+        self.shouldSendPalmData = False
+        self.showDebugLogs = False
 
 
-        #Initialize finger data
+        # Initialize finger data
         self.init_fingers()
 
-        #Initialize Maya connection
+        # Initialize Maya connection
         self.init_maya_connection()
 
         print "Initialized"
 
-    #Initialize five fingers for this Listener
+    # Initialize five fingers for this Listener
     def init_fingers(self):
-        #Initialize only 4 fingers for the right hand
+        # Initialize only 4 fingers for the right hand
         for index in range(0, self.numFingers):
             data = FingerData(index)
             #Add to our data array
             self.fingerData.append(data)
 
-    #Initilize Maya Connection
+    # Initilize Maya Connection
     def init_maya_connection(self):
         self.mayaConnection= MayaConnection(MAYA_PORT)
 
-    #Get the finger data for an id
+    # Get the finger data for an id
     def get_finger_data(self, index):
         return self.fingerData[index]
 
-    #On connect of listener to controller
+    # On connect of listener to controller
     def on_connect(self, controller):
         print "Connected"
 
-    #On disconnect of the listener to the controller
+    # On disconnect of the listener to the controller
     def on_disconnect(self, controller):
         self.mayaConnection.close()
         print "Disconnected"
 
-    #On exit of listener
+    # On exit of listener
     def on_exit(self, controller):
         self.mayaConnection.close()
         print "Exited"
 
-    #On Frame being read from the Leap Do something
+    # On Frame being read from the Leap Do something
     def on_frame(self, controller):
         # Get the most recent frame and report some basic information
         frame = controller.frame()
-        #Verify we have hands to find fingers on - Assume left hand only pointer finger out
+        # Verify we have hands to find fingers on - Assume left hand only pointer finger out
         if (not frame.hands.empty):
          
             # Get the first hand (Let's assume only Right hand for now)
             hand = frame.hands[0]
-            #Get Palm Position
+            # Get Palm Position
             palmPosition = hand.palm_position 
+
+            palm = {
+                'position': hand.palm_position,
+                'normal': hand.palm_normal
+            }
+
             # Check if the hand has any fingers
             fingers = hand.fingers
             if (not fingers.empty):
 
-                #Get a BaseLine of length for the fingers if we need them
+                # Get a BaseLine of length for the fingers if we need them
                 if self.captureBaseline:
                     self.capture_baseline_lengths(fingers)
                     return
 
-                #Frame control rate for the leap
+                # Frame control rate for the leap
                 if (not self.receiveFrame):
                     self.skipCount = self.skipCount - 1
                     # print self.skipCount
                     if (self.skipCount == 0):
                         self.receiveFrame = True
                         self.skipCount = self.maxSkipCount
-                    return;
+                    return
                 self.receiveFrame = False
 
-                #Sort fingers to get order by 
+                # Sort fingers to get order by 
                 fingers = self.sort_fingers_by_x(fingers)
                 #print fingers 
                 
-                #Queue for storing our target mapping data
-                targetQueue = self.get_full_hand_queue(fingers)
+                # Queue for storing our target mapping data of fingers and the palm
+                targetQueue = self.get_full_hand_queue(fingers, palm)
 
-                #Adjust the ids based on the number of fingers
+                # Adjust the ids based on the number of fingers
                 currentNumFingers = len(fingers)
                 if currentNumFingers == 1:
-                    print '1 - INDEX'
+                    
+                    self.printd('1 - INDEX')
                     targetQueue = self.get_pointer(targetQueue)
 
                 elif currentNumFingers == 2 :
-                    print '2 - PEACE'
+                    self.printd('2 - PEACE')
                     targetQueue = self.get_peace_sign(targetQueue)
                     #return
 
                 elif currentNumFingers == 3:
-                    print '3 - ROCKER'
+                    self.printd('3 - ROCKER')
                     targetQueue = self.get_peace_sign(targetQueue)
                     #targetQueue = self.get_rocker(targetQueue)
                     #print targetQueue
@@ -211,26 +223,32 @@ class PAListener(Leap.Listener):
                 elif currentNumFingers == 4:
                     targetQueue = self.get_spongebob(targetQueue)
 
-
-
+                # Send data to maya
                 self.mayaConnection.send_target_queue(targetQueue)
 
                 #print fingers
 
-    #set the order of the finger ids to be 1, 2 for index and middle
+    '''
+    '' Prints Debug statements if debugging is enabled
+    '''
+    def printd(self, statement):
+        if (self.showDebugLogs):
+            print(statement)
+
+    # Set the order of the finger ids to be 1, 2 for index and middle
     def get_peace_sign(self, targetQueue):
         targetQueue[0]['id'] = 0
         targetQueue[1]['id'] = 1
         return targetQueue
 
-    #Set the order of the finger ids to be 0, 1,4 for thumb, index, pinky
+    # Set the order of the finger ids to be 0, 1,4 for thumb, index, pinky
     def get_rocker(self, targetQueue):
         targetQueue[0]['id'] = 0
         targetQueue[1]['id'] = 1
         targetQueue[2]['id'] = 4
         return targetQueue
 
-    #Set the finger ID to be '1' for the index
+    # Set the finger ID to be '1' for the index
     def get_pointer(self, targetQueue):
         targetQueue[0]['id'] = 0
         return targetQueue
@@ -243,46 +261,57 @@ class PAListener(Leap.Listener):
         return targetQueue
 
 
-    #gets a queue of finger data for a full hand
-    def get_full_hand_queue(self, fingers):
-        #Queue for storing our target mapping data
+    '''
+    ' Gets a queue of finger data for a full hand such that
+    ' the right-hand thumb corresponds to index 0 and the 
+    ' right-hand pinky corresponds to the index 4 
+    '''
+    def get_full_hand_queue(self, fingers, palm):
+        # Queue for storing our target finger mapping data
         targetQueue = []
         for index in range(0, len(fingers)):
             finger = fingers[index]
 
-            mappedTarget = self.get_target_mapping(finger, index)
-            #Add to our queue
+            mappedTarget = self.get_finger_target_mapping(finger, index)
+            # Add to our queue
             targetQueue.append(mappedTarget)
+
+        # Add palm data if necessary
+        if (self.is_sending_palm_data()):
+            # Create the palm target
+            palmTarget = self.get_palm_target_mapping(palm)
+            # Add the palm information to the target queue
+            targetQueue.append(palmTarget)
+
+        # Take the queue and send all the data to maya!
         return targetQueue
-        #Take the queue and send all the data to maya!
         #print targetQueue
 
-    #Gets a target mapping for sending to maya 
-    def get_target_mapping(self, finger, index):
-            #Fingers have direction, length, width, tip_velocity, tip_position, etc.
-            #Not sure what I need so will have to figure that out later
+    # Gets a target mapping for sending to maya 
+    def get_finger_target_mapping(self, finger, index):
+            # Fingers have direction, length, width, tip_velocity, tip_position, etc.
+            # Not sure what I need so will have to figure that out later
 
-            #Get the finger data associated with this fingerID
+            # Get the finger data associated with this fingerID
             #print index
             fingerData = self.get_finger_data(index)
             maxFingerLength = fingerData.get_base_length()
 
-            #Get the finger dir and length
+            # Get the finger dir and length
             fDir = finger.direction
             fLength = finger.length
             fPos = finger.tip_position
 
-            #Are we only using direction or do we want positon?
+            # Are we only using direction or do we want positon?
             USE_DIRECTION = True
 
             if USE_DIRECTION:
-                #Use the directional vector for mapping
+                # Use the directional vector for mapping
                 targetDir = fDir.normalized
             else:
-                #Use the finger tip for mapping
+                # Use the finger tip for mapping
                 targetDir = finger.tip_position
-
-            #The ratio of the length to the maxLength
+            # The ratio of the length to the maxLength
             fLengthRatio = fLength/maxFingerLength
 
             mappedTarget = {
@@ -292,20 +321,38 @@ class PAListener(Leap.Listener):
             }
 
             return mappedTarget
-    #Returns if we should be capturing baseline length data
+
+    '''
+    '' Returns a mapping object for the palm position and normal direction
+    '''
+    def get_palm_target_mapping(self, palm):
+        scaleFactor = 0.06
+        palmPosition = palm['position']
+        palmNormal = palm['normal']
+        mappedTarget = {
+                'id': PALM_INDEX,
+                'normal': [palmNormal[0], palmNormal[1], palmNormal[2]],
+                'position': [
+                    scaleFactor * palmPosition[0], 
+                    scaleFactor * palmPosition[1], 
+                    scaleFactor * palmPosition[2]]
+        }
+        return mappedTarget
+
+    # Returns if we should be capturing baseline length data
     def should_capture_baseline(self):
         return self.captureBaseline
-    #Increment the number of baseline frames captures
+    # Increment the number of baseline frames captures
     def increment_num_baseline_frames(self):
         self.numBaselineFrames += 1
         if (self.numBaselineFrames > self.maxNumBaselineFrames):
             self.captureBaseline = False 
    
-    #Returns the current number of baseline frames
+    # Returns the current number of baseline frames
     def get_num_baseline_frames(self):
         return self.numBaselineFrames
 
-    #Gets a baseline length for the fingers to compute the average
+    # Gets a baseline length for the fingers to compute the average
     def capture_baseline_lengths(self, fingers):
         if (self.should_capture_baseline() and len(fingers) == self.numFingers):
             #Sort the Fingers
@@ -322,37 +369,54 @@ class PAListener(Leap.Listener):
                 fingerData = self.get_finger_data(index)
                 fingerData.add_base_length(fLength)
 
-            #Sum the length into the BASELINE Length
+            # Sum the length into the BASELINE Length
             print 'Calculating Average of Max Base Lengths - Frame %s of %s' % (self.get_num_baseline_frames(), self.maxNumBaselineFrames)
             
-            #Increment our count of baseline frames
+            # Increment our count of baseline frames
             self.increment_num_baseline_frames()
 
-        #When we have the max number of baseline frames, average the values for the fingers
-        #Then begin actual target point collection
+        # When we have the max number of baseline frames, average the values for the fingers
+        # Then begin actual target point collection
         if not self.should_capture_baseline():
-            #For each fingerData
+            # For each fingerData
             for data in self.fingerData:
-                #average all the base frame lengths
+                # average all the base frame lengths
                 data.compute_base_length()
 
     # Sort the fingers based on  x-position 
     # (left-most == Thumb, Right Hand OR Pinky, Left Hand)
     def sort_fingers_by_x(self, fingers):  
         #Make a list of the fingers that isn't const (FingerList is)
-        sortedFingers = [];
+        sortedFingers = []
         for finger in fingers:
             sortedFingers.append(finger)
             #print finger
-        #selection sort the fingers\
+        # Selection sort the fingers\
         sortedFingers = sorted(sortedFingers, key=lambda finger: finger.tip_position.x)
         return sortedFingers
 
+    '''
+    '' Sets whether we should be sending palm data to Maya
+    '''
+    def set_send_palm_data(self, shouldSend):
+        self.shouldSendPalmData = shouldSend
+        if (self.shouldSendPalmData):
+            print('Sending Palm Data')
+        else:
+            print('Stopped Sending Palm Data')
+            
+
+    '''
+    '' Determines if this listener is sending palm data 
+    '''
+    def is_sending_palm_data(self):
+        return self.shouldSendPalmData  
 
 
 ############################################################
 ########################### MAIN ###########################
 ############################################################
+
 def main():
     # Create a listener and controller
     listener = PAListener()        
@@ -361,9 +425,19 @@ def main():
     # Have the sample listener receive events from the controller
     controller.add_listener(listener)
 
-    # Keep this process running until Enter is pressed
-    print "Press Enter to quit..."
-    sys.stdin.readline()
+    # Keep this process running until Q is pressed to quit
+    print('Press \'P\' to toggle sending palm data' + '\nPress Q to quit')
+    while (True):
+        inputKey = sys.stdin.read(1)
+        if (inputKey == 'p'):
+            # Toggle sending palm data
+            wasSendingPalmData = listener.is_sending_palm_data()
+            listener.set_send_palm_data(not wasSendingPalmData)
+        elif (inputKey == 'q'):
+            # Quit
+            break
+
+
 
     # Remove the sample listener when done
     controller.remove_listener(listener)
