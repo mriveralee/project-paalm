@@ -4,7 +4,6 @@
 	/Applications/Autodesk/maya2013/Maya.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6
 
 
-
 ///////////////////////////////
 
 
@@ -44,6 +43,7 @@ clang++ -arch i386 -arch x86_64 -I/Applications/Autodesk/maya2012/Maya.app/Conte
 
 -- MY MAYA 2013 =====> clang++ -arch x86_64 -I /Applications/Autodesk/maya2013/Maya\ 2013.app/Contents/Frameworks/Python.framework/Versions/2.6/include/python2.6 -I/Applications/Autodesk/maya2013/Maya\ 2013.app/Contents/Frameworks/Python.framework/Versions/2.6/lib/python2.6 Leapwrappython.cpp libLeap.dylib /Applications/Autodesk/maya2013/Maya\ 2013.app/Contents/Frameworks/Python.framework/Versions/2.6/Python -shared -o _LeapPython.so
 
+-- MY MAYA 2014 =====> clang++ -arch x86_64 -I /Applications/Autodesk/maya2014/Maya.app/Contents/Frameworks/Python.framework/Versions/2.7/include/python2.7 -I/Applications/Autodesk/maya2014/Maya.app/Contents/Frameworks/Python.framework/Versions/2.7/lib/python2.7 Leapwrappython.cpp libLeap.dylib /Applications/Autodesk/maya2014/Maya.app/Contents/Frameworks/Python.framework/Versions/2.7/Python -shared -o _LeapPython.so
 
 
 In general, for any version of python, the syntax of the command is:

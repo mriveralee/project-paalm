@@ -25,6 +25,7 @@ class SampleListener extends Listener {
     }
 
     public void onDisconnect(Controller controller) {
+        //Note: not dispatched when running in a debugger.
         System.out.println("Disconnected");
     }
 
@@ -42,13 +43,13 @@ class SampleListener extends Listener {
                          + ", tools: " + frame.tools().count()
                          + ", gestures " + frame.gestures().count());
 
-        if (!frame.hands().empty()) {
+        if (!frame.hands().isEmpty()) {
             // Get the first hand
             Hand hand = frame.hands().get(0);
 
             // Check if the hand has any fingers
             FingerList fingers = hand.fingers();
-            if (!fingers.empty()) {
+            if (!fingers.isEmpty()) {
                 // Calculate the hand's average finger tip position
                 Vector avgPos = Vector.zero();
                 for (Finger finger : fingers) {
@@ -132,7 +133,7 @@ class SampleListener extends Listener {
             }
         }
 
-        if (!frame.hands().empty() || !gestures.empty()) {
+        if (!frame.hands().isEmpty() || !gestures.isEmpty()) {
             System.out.println();
         }
     }

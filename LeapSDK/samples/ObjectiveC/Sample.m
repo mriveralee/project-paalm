@@ -18,7 +18,6 @@
     controller = [[LeapController alloc] init];
     [controller addListener:self];
     NSLog(@"running");
-    [[NSRunLoop currentRunLoop] run]; // required for performSelectorOnMainThread:withObject
 }
 
 #pragma mark - SampleListener Callbacks
@@ -28,7 +27,7 @@
     NSLog(@"Initialized");
 }
 
-- (void)onConnect:(NSNotification *)notification;
+- (void)onConnect:(NSNotification *)notification
 {
     NSLog(@"Connected");
     LeapController *aController = (LeapController *)[notification object];
@@ -38,22 +37,24 @@
     [aController enableGesture:LEAP_GESTURE_TYPE_SWIPE enable:YES];
 }
 
-- (void)onDisconnect:(NSNotification *)notification;
+- (void)onDisconnect:(NSNotification *)notification
 {
+    //Note: not dispatched when running in a debugger.
     NSLog(@"Disconnected");
 }
 
-- (void)onExit:(NSNotification *)notification;
+- (void)onExit:(NSNotification *)notification
 {
     NSLog(@"Exited");
 }
 
-- (void)onFrame:(NSNotification *)notification;
+- (void)onFrame:(NSNotification *)notification
 {
     LeapController *aController = (LeapController *)[notification object];
 
     // Get the most recent frame and report some basic information
     LeapFrame *frame = [aController frame:0];
+
     NSLog(@"Frame id: %lld, timestamp: %lld, hands: %ld, fingers: %ld, tools: %ld, gestures: %ld",
           [frame id], [frame timestamp], [[frame hands] count],
           [[frame fingers] count], [[frame tools] count], [[frame gestures:nil] count]);
@@ -97,6 +98,14 @@
         switch (gesture.type) {
             case LEAP_GESTURE_TYPE_CIRCLE: {
                 LeapCircleGesture *circleGesture = (LeapCircleGesture *)gesture;
+
+                NSString *clockwiseness;
+                if ([[[circleGesture pointable] direction] angleTo:[circleGesture normal]] <= LEAP_PI/4) {
+                    clockwiseness = @"clockwise";
+                } else {
+                    clockwiseness = @"counterclockwise";
+                }
+
                 // Calculate the angle swept since the last frame
                 float sweptAngle = 0;
                 if(circleGesture.state != LEAP_GESTURE_STATE_START) {
@@ -104,9 +113,10 @@
                     sweptAngle = (circleGesture.progress - previousUpdate.progress) * 2 * LEAP_PI;
                 }
 
-                NSLog(@"Circle id: %d, %@, progress: %f, radius %f, angle: %f degrees",
+                NSLog(@"Circle id: %d, %@, progress: %f, radius %f, angle: %f degrees %@",
                       circleGesture.id, [Sample stringForState:gesture.state],
-                      circleGesture.progress, circleGesture.radius, sweptAngle * LEAP_RAD_TO_DEG);
+                      circleGesture.progress, circleGesture.radius,
+                      sweptAngle * LEAP_RAD_TO_DEG, clockwiseness);
                 break;
             }
             case LEAP_GESTURE_TYPE_SWIPE: {
@@ -139,6 +149,16 @@
     if (([[frame hands] count] > 0) || [[frame gestures:nil] count] > 0) {
         NSLog(@" ");
     }
+}
+
+- (void)onFocusGained:(NSNotification *)notification
+{
+    NSLog(@"Focus Gained");
+}
+
+- (void)onFocusLost:(NSNotification *)notification
+{
+    NSLog(@"Focus Lost");
 }
 
 + (NSString *)stringForState:(LeapGestureState)state

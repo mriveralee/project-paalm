@@ -12,11 +12,11 @@
 #if !defined(__GL_H__)
   #if defined(WIN32)
     #include <windows.h>
-    #include <GL/GL.h>
+    #include <GL/gl.h>
   #elif defined(__MACH__)
     #include <OpenGL/gl.h>
   #else
-    #include <GL/GL.h>
+    #include <GL/gl.h>
   #endif
 #endif // !__GL_H__
 
@@ -83,14 +83,14 @@ private:
 class GLAttribScope
 {
 public:
-  GLAttribScope( GLbitfield flags ) 
-  { 
-    glPushAttrib( flags ); 
+  GLAttribScope( GLbitfield flags )
+  {
+    glPushAttrib( flags );
   }
 
-  ~GLAttribScope() 
-  { 
-    glPopAttrib(); 
+  ~GLAttribScope()
+  {
+    glPopAttrib();
   }
 
 private:

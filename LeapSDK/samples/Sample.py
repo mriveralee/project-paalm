@@ -24,6 +24,7 @@ class SampleListener(Leap.Listener):
         controller.enable_gesture(Leap.Gesture.TYPE_SWIPE);
 
     def on_disconnect(self, controller):
+        # Note: not dispatched when running in a debugger.
         print "Disconnected"
 
     def on_exit(self, controller):
@@ -36,13 +37,13 @@ class SampleListener(Leap.Listener):
         print "Frame id: %d, timestamp: %d, hands: %d, fingers: %d, tools: %d, gestures: %d" % (
               frame.id, frame.timestamp, len(frame.hands), len(frame.fingers), len(frame.tools), len(frame.gestures()))
 
-        if not frame.hands.empty:
+        if not frame.hands.is_empty:
             # Get the first hand
             hand = frame.hands[0]
 
             # Check if the hand has any fingers
             fingers = hand.fingers
-            if not fingers.empty:
+            if not fingers.is_empty:
                 # Calculate the hand's average finger tip position
                 avg_pos = Leap.Vector()
                 for finger in fingers:
@@ -104,7 +105,7 @@ class SampleListener(Leap.Listener):
                             gesture.id, self.state_string(gesture.state),
                             screentap.position, screentap.direction )
 
-        if not (frame.hands.empty and frame.gestures().empty):
+        if not (frame.hands.is_empty and frame.gestures().is_empty):
             print ""
 
     def state_string(self, state):
