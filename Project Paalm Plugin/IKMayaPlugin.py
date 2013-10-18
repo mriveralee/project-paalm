@@ -7,12 +7,15 @@
 ''  
 '''
 
+import maya.cmds as cmds
+import Leap
+from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
+import string, math, time
+
 import sys
 import maya.OpenMaya as OpenMaya
 import maya.OpenMayaMPx as OpenMayaMPx
 
-''' Refers to MEL command that starts the PAALM Plugin '''
-PAALM_COMMAND_NAME = 'paalm'
 
 ''' PAALM Command Class '''
 class PAALM(OpenMayaMPx.MPxCommand):
@@ -31,6 +34,7 @@ def paalmCommandCreator():
 
 ''' Initialize the plug-in when Maya loads it '''
 def initializePlugin(mObject):
+    global PAALM_COMMAND_NAME
     mPlugin = OpenMayaMPx.MFnPlugin(mObject)
     try:
         mPlugin.registerCommand(PAALM_COMMAND_NAME, paalmCommandCreator)
@@ -39,6 +43,7 @@ def initializePlugin(mObject):
 
 ''' Uninitialize the plug-in when Maya un-loads it '''
 def uninitializePlugin(mObject):
+    global PAALM_COMMAND_NAME
     mPlugin = OpenMayaMPx.MFnPlugin(mObject)
     try:
         mPlugin.deregisterCommand(PAALM_COMMAND_NAME)
@@ -53,12 +58,6 @@ def uninitializePlugin(mObject):
 
 #I n Maya run MEL command 
 #commandPort -name ":6001"
-
-
-import Leap, sys
-from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
-import string, math, MayaConnection
-import time
 
 
 
@@ -107,6 +106,8 @@ class MayaConnection():
         
         #self.maya.send(command)
         print 'Sending Target Queue!'
+
+
 
 # DEMO VARS
 IS_TRACKING_DEMO = True
@@ -499,6 +500,152 @@ def main():
 if __name__ == "__main__":
     main()
 
-############################################################
-######################## END SCRIPT ########################
-############################################################
+
+
+
+################################################################################
+###  Custom Menu Window for PAALM (Buttons) ####################################
+################################################################################
+from functools import partial
+
+class PAALMEditorWindow(object):
+
+    ''' 
+    '' Creates the Editor Window 
+    '''
+    def __init__(self):
+        # Create an editor window
+        self.name = 'PAALMEditor'
+        self.window = None
+        self.layout = None
+        # Build the window and layout
+        self.construct()
+
+
+
+        global PAALM_EDITOR_WINDOW
+        PAALM_EDITOR_WINDOW = self
+
+    '''
+    '' Returns true if this editor window already exists
+    '''
+    def exists(self):
+        return cmds.window(self.name, query=True, exists=True)
+
+    '''
+    '' Constructs the window and layout
+    '''
+    def construct(self):
+        self.window =cmds.window(
+            self.name,
+            menuBar=True, 
+            width=450, 
+            height=450, 
+            title='PAALM Editor',
+            maximizeButton=False,
+            docTag='PAALM Editor',
+            sizeable=False,
+            retain=True)
+        self.layout = cmds.columnLayout(parent=self.window)
+
+        # Reset button for clearing keyframes
+        cmds.button(
+            label='Reset', 
+            parent=self.layout, 
+            command=partial(self.report, 'Resetting Keyframes'))
+
+        # Calibrate Button
+        cmds.button(
+            label='Calibrate', 
+            parent=self.layout, 
+            command=partial(self.report, 
+                'Hold your hand above the Leap Motion Controller with Open Palms'))
+
+        # Start Tracking
+        cmds.button(
+            label='Start', 
+            parent=self.layout, 
+            command=partial(self.report, 'Tracking Gestures'))
+
+        # Stop Tracking
+        cmds.button(
+            label='Stop', 
+            parent=self.layout, 
+            command=partial(self.report, 'Stopped Tracking Gestures'))
+
+    '''
+    '' Shows the editor window
+    '''
+    def show(self):
+        # Make the window if none exists
+        if (self.exists()):
+            # Show the window if it already exists
+            print 'Prev window'
+            cmds.showWindow(self.name)
+        else:
+            # Show the button window
+            self.construct()
+            cmds.showWindow(self.window)
+
+    '''
+    '' Callback function to print values when a button is pressed
+    '''
+    def report(self,buttonIndex,value):
+        print "button %d got %s"%(buttonIndex, value)
+   
+
+################################################################################
+###  Custom Drop Down Menu for PAALM  ##########################################
+################################################################################
+
+class PAALMDropDownMenu(object):
+
+    '''
+    '' Initialize the PAALM DropDown Menu
+    '''
+    def __init__(self):
+        gMainWindow = maya.mel.eval('$temp1=$gMainWindow')
+        dropDownMenu = cmds.menu(label='PAALM', parent=gMainWindow, tearOff=True)
+        cmds.menuItem(
+            label='Show Editor', 
+            parent=dropDownMenu,
+            command='showEditorWindow()')
+        cmds.menuItem(
+            label='About',
+            parent=dropDownMenu)
+        #cmds.menuItem(divider=True)
+        cmds.menuItem(
+            label='Quit',
+            parent=dropDownMenu)
+    
+
+''' 
+'' Shows the PAALM Editor Window 
+'''
+def showEditorWindow():
+    global PAALM_EDITOR_WINDOW
+    PAALM_EDITOR_WINDOW.show()
+
+    
+
+'''
+##################################################
+## GLOBALS #######################################
+##################################################
+'''
+
+## Refers to MEL command that starts the PAALM Plugin ##
+PAALM_COMMAND_NAME = 'paalm'
+
+## Reference to the PAALM Editor Window ##
+PAALM_EDITOR_WINDOW = PAALMEditorWindow()
+
+## Reference to the PAALM Drop Down Menu ##
+PAALM_DROP_DOWN_MENU = PAALMDropDownMenu()
+
+
+
+
+
+
+
