@@ -12,6 +12,7 @@ import sys, string, time
 import math as Math
 
 # Maya Imports
+import maya
 import maya.cmds as cmds
 import maya.OpenMaya as OpenMaya
 import maya.OpenMayaMPx as OpenMayaMPx
@@ -20,6 +21,9 @@ from pymel.core import *
 
 # PyMel Data Types for Matrices, Quaternions etc
 import pymel.core.datatypes as dt
+
+# Handles function callbacks for commands
+from functools import partial
 
 # Leap Imports
 import Leap
@@ -33,8 +37,6 @@ from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
 ## PAALM OPTIONS ###########################################
 ############################################################
 '''
-## Index for Palm Position ##
-PALM_INDEX = 9999
 
 ## Degrees-to-Radians ##
 DEG_TO_RAD = Math.pi/180
@@ -42,23 +44,16 @@ DEG_TO_RAD = Math.pi/180
 ## Epsilon for float comparison ##
 EPSILON = 0.001
 
-## Config Key for Current Time
-CURRENT_TIME_KEY = 'CURRENT_TIME'
-
 ## PAALM Configuration ##
 CONFIG = {
     'JOINT_ANGLE_MULTIPLIER': 0.5,
-    'CURRENT_TIME': 1,                   #Current Animation time
     'INITIAL_MAX_TIME': 30000,
-    'MAX_TIME': 60000,
+    'MAX_TIME_INCREMENT': 200,
     'MIN_TIME': 1,
     'TIME_INCREMENT': 15,
-    'PALM_INDEX': 9999
+    'PALM_INDEX': 9999,
+    'MIN_CLEAR_FRAME': 2
 }
-
-
-## The type assigned to the Hand Demo Joint Set up ##
-HAND_DEMO_TYPE = 1
 
 ## Defines if we use direction vectors from the Leap. ##
 ## If false, we use raw positions ##
@@ -81,14 +76,28 @@ USE_CHARACTER = True
 USE_QUATERNIONS = True
 
 ############################################################
-####################### FINGER TEST ########################
+#################### FINGER TEST CONFIG ####################
 ############################################################
-
+''' 
+'' DO NOT EDIT THESE CONFIGS BELOW
+'''
 ## List of Fingers Being Used for IK ##
 PAALM_FINGERS = []
 
 ## List of Hands Being Used for IK ##
 PAALM_HANDS = []
+
+## The type assigned to the Hand Demo Joint Set up ##
+HAND_DEMO_TYPE = -1
+
+## The type assigned to the Character Demo Joint Set up ##
+CHARACTER_DEMO_TYPE = -2
+
+## The type assigned to the Octopus Demo Joint Set up ##
+OCTOPUS_DEMO_TYPE = -3
+
+## Active Demo Type - the type of demo that is being used ##
+ACTIVE_DEMO_TYPE = HAND_DEMO_TYPE
 
 
 
@@ -135,6 +144,17 @@ class Hand(object):
     def has_palm(self):
         return self.palm is not None
 
+    def clear_keyframes(self, currentMaxTime=0):
+        if (currentMaxTime == 0):
+            currentMaxTime = get_max_time()
+        for finger in self.fingers:
+            finger.clear_keyframes(currentMaxTime)
+                #Clear All the key frames for every joint
+        #pm.refresh(force=True)
+        if (self.has_palm):
+            self.palm.clear_keyframes(currentMaxTime)
+
+
     # #Compute length between the palm and wrist
     # def calculate_palm_to_wrist_length(self):
     #     if (self.has_palm() and self.has_wrist()):
@@ -168,11 +188,13 @@ class Finger(object):
         self.mayaID = mayaID
         self.length = 0
         self.hasTarget = False
+        self.target = None
         self.jointList = []
+
         self.add_joints(jointList)
         self.set_target(target)
         self.calculate_length()
-        self.currentTime = 0
+        #self.currentTime = 0
 
 
     #Returns the output that is returned when using the print function
@@ -219,19 +241,14 @@ class Finger(object):
         #Clear target keyframes
         if (self.has_target()):
             self.target.set_keyframe(currentTime)
-        #Increment the Global Time
-        self.increment_time()
     
-    #Increment the finger keyframe counter
-    def increment_time(self):
-        self.currentTime += CONFIG['TIME_INCREMENT']
 
     #Clears all key frames on the finger's joints from
-    def clear_keyframes(self, currentMaxTime=CONFIG['MAX_TIME']):
+    def clear_keyframes(self, currentMaxTime=0):
         #currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
-        #CONFIG['MAX_TIME'] = currentMaxTime
-        self.currentTime = 1
-
+        #self.currentTime = 1
+        if (currentMaxTime == 0):
+            currentMaxTime = get_max_time()
         for joint in self.jointList:
             #print joint
             joint.clear_keyframes(currentMaxTime)
@@ -240,11 +257,6 @@ class Finger(object):
         if (self.has_target()):
             self.target.clear_keyframes(currentMaxTime)
 
-
-        CONFIG[CURRENT_TIME_KEY] = CONFIG['MIN_TIME']
-        CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
-        #print CONFIG['MAX_TIME']
-        pm.playbackOptions(maxTime= CONFIG['MAX_TIME'])
 
     #Sets the target object that is in maya for this finger
     def set_target(self, target):
@@ -276,7 +288,7 @@ class Finger(object):
             return self.target.get_position()
         else:
             print 'No target defined'
-            #TODO: REturn the end effector's current position
+            #TODO: Return the end effector's current position
             return Leap.Vector(0,0,0)
     #Sets the target position for the finger 
     def set_target_position(self, position):
@@ -355,7 +367,7 @@ class Finger(object):
             for index in range(0, numJoints-1):
                 #print index
                 firstKey = index
-                secondKey = index +1
+                secondKey = index + 1
 
                 firstJoint = self.jointList[index]
                 secondJoint = self.jointList[index+1]
@@ -403,7 +415,6 @@ class Finger(object):
             print 'No Target to Perform CCD On!'
             return False
         else:            
-            self.currentTime = keyframeTime
 
             #Number of iterations to perform per finger
             iterations = 40
@@ -543,7 +554,7 @@ class Joint(object):
     def clear_keyframes(self, currentMaxTime):
         #currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
         #print currentMaxTime
-        pm.cutKey(self.mayaID, time=(1, currentMaxTime), option='keys')
+        pm.cutKey(self.mayaID, time=(CONFIG['MIN_CLEAR_FRAME'], currentMaxTime), option='keys')
 
     #Get Composite Matrix - include all rotation, translation values
     def get_composite_matrix(self):
@@ -570,7 +581,7 @@ class Joint(object):
                             )
         #Set the composition matrix on the object
         pm.xform(self.mayaID, ws=True, matrix=matAsFloatTuple) #Removed Euler euler=True because it was rotating about local axes
-        pm.refresh(force=True)
+        #pm.refresh(force=True)
 
 
     #Return this joint's current position in World Space
@@ -733,7 +744,9 @@ class Palm(Joint):
         self.pos = Leap.Vector(mayaPos[0], mayaPos[1], mayaPos[2])
         
         # Get Rotatation of joint in Maya
-        mayaRot = pm.xform(self.mayaID, query=True, rotation=True)   
+        mayaRot = pm.xform(self.mayaID, query=True, rotation=True)
+        
+        # Set rotation
         self.rot = Leap.Vector(mayaRot[0], mayaRot[1], mayaRot[2])
 
 
@@ -747,7 +760,7 @@ class Palm(Joint):
     '' Set the position of this joint in Maya 
     '''
     def set_position(self, position):
-        pm.xform(self.mayaID, t=(position[0],position[1], position[2]), ws=True)
+        pm.xform(self.mayaID, t=(position[0], position[1], position[2]), ws=True)
         self.pos = position
         return True
 
@@ -762,56 +775,89 @@ class Palm(Joint):
 #############################################################
 
 '''
-'' Returns the current time maintained in the config
+'' Returns the current time in maya
 '''
 def get_current_time():
-    return CONFIG[CURRENT_TIME_KEY]
+    return cmds.currentTime(query=True)
+
+'''
+'' Sets the current time in maya
+'''
+def set_current_time(newTime):
+    cmds.currentTime(newTime, edit=True)
+
+'''
+'' Gets the config time Increment
+'''
+def get_time_increment():
+    return CONFIG['TIME_INCREMENT']
+
+'''
+'' Increments the time kept in the maya by the TIME_INCREMENT
+'''
+def increment_current_time(timeIncrement=0):
+    if (timeIncrement == 0):
+        timeIncrement = get_time_increment()
+    # Update the current time by the increment
+    newTime = get_current_time() + timeIncrement
+    print "Incremented New Time" + str(newTime)
+    set_current_time(newTime)
+    
+    # Check if we need to increase the max time buffer
+    maxTimeBuffer =  get_max_time()-10
+    if (newTime >= maxTimeBuffer):
+        increase_max_time()
 
 '''
 '' Returns the current max time from our config
 '''
 def get_max_time():
-    return CONFIG['MAX_TIME']
+    return pm.playbackOptions(query=True, maxTime=True)
 
 '''
-'' Increments the time kept in the config
+'' Sets the maxTime in maya
 '''
-def increment_time():
-    global CONFIG
-    CONFIG[CURRENT_TIME_KEY] = CONFIG[CURRENT_TIME_KEY] + CONFIG['TIME_INCREMENT']
-    pm.playbackOptions(loop='once', maxTime=CONFIG['MAX_TIME'])
-    currentTime = get_current_time()
-    maxTimeBuffer =  get_max_time()-10
-    if (currentTime >= maxTimeBuffer):
-        increase_max_time()
+def set_max_time(newTime):
+    pm.playbackOptions(maxTime=newTime)
+
+def get_max_time_increment():
+    return CONFIG['MAX_TIME_INCREMENT']
 
 '''
-'' Increases the max time and updates the config
+'' Increases the max time in maya
 '''
-def increase_max_time():
-    global CONFIG
-    CONFIG['MAX_TIME'] = CONFIG['MAX_TIME'] + 200
-    pm.playbackOptions(maxTime=CONFIG['MAX_TIME'])
+def increase_max_time(timeIncrement=get_max_time_increment()):
+    newMaxTime = get_max_time() + timeIncrement
+    pm.playbackOptions(loop='once', maxTime=newMaxTime)
+ 
 
 '''
 '' Resets the keyframes for all joints in the Structure
 '' And resets the current time key and max time
 '''
 def reset_time():
-    global CONFIG, PAALM_HANDS 
     #Clear All the key frames for every joint
     currentMaxTime = pm.playbackOptions(query=True, maxTime=True)
-    #print 'woo'
-    #print currentMaxTime
-    for hand in PAALM_HANDS: 
-        #print jointKey 
-        #pm.cutKey(jointKey, time=(1, currentMaxTime), option='keys')
-        for finger in hand:
-            finger.clear_keyframes()
-            pm.refresh(force=True)
-    CONFIG[CURRENT_TIME_KEY] = CONFIG['MIN_TIME']
-    CONFIG['MAX_TIME'] = CONFIG['INITIAL_MAX_TIME']
-    #pm.playbackOptions(maxTime= CONFIG['INITIAL_MAX_TIME'])
+    
+    # Clear keyframes for all hands 
+    clear_keyframes()   
+
+    # Reset time 
+    set_current_time(CONFIG['MIN_TIME'])
+    set_max_time(get_current_time() + get_max_time_increment())
+
+'''
+'' Clears the keyframes for all linked items
+'''
+def clear_keyframes():
+    # Clear key frames for all hands
+    for hand in PAALM_HANDS:
+       hand.clear_keyframes()
+    # Increment key frame time
+    pm.refresh(force=True)
+    increment_current_time()
+
+
 
 
 #############################################################
@@ -824,7 +870,8 @@ def reset_time():
 '' (the directional vector), and if enabled, palm position data
 '''
 def update_IK_targets(targetQueue):
-    #Right Hand 
+    #Right Hand
+    global PAALM_HANDS 
     rightHand = PAALM_HANDS[0]
     rightPalm = rightHand.palm
     numFingers = len(rightHand.fingers)
@@ -834,7 +881,7 @@ def update_IK_targets(targetQueue):
     # Assume using direction
     for target in targetQueue:
         # Handle the Demo Type
-        if (DEMO_TYPE == 3):
+        if (ACTIVE_DEMO_TYPE == OCTOPUS_DEMO_TYPE):
             # Octopuse Demo
             handle_octo_input(rightHand.fingers, target, octoCount)
             if (octoCount == 0 or octoCount == 1):
@@ -842,7 +889,7 @@ def update_IK_targets(targetQueue):
             else:
                 octoCount = octoCount + 2
             continue
-        elif (DEMO_TYPE == 2 and USE_CHARACTER and len(targetQueue) > 2):
+        elif (ACTIVE_DEMO_TYPE == CHARACTER_DEMO_TYPE and USE_CHARACTER and len(targetQueue) > 2):
             # Character Demo
             count = count + 1
             if (count > 2):
@@ -898,14 +945,16 @@ def update_IK_targets(targetQueue):
     currentTime = get_current_time()
     # Set keyframe for palm
     rightPalm.set_keyframe(currentTime)
+    
     # Set Key frame for a finger
     for finger in rightHand.fingers:
         #finger.perform_ccd(ccdTime)
-        #Refresh Display
         finger.set_keyframe(currentTime)
+        
+        #Refresh Display
         pm.refresh(force=True)
     #Increase Animation Timer
-    increment_time()
+    increment_current_time()
 
 '''
 '' Function for dealing with octopus input 
@@ -1075,14 +1124,12 @@ class PAListener(Leap.Listener):
     '' On disconnect of the listener to the controller
     '''
     def on_disconnect(self, controller):
-        self.mayaConnection.close()
         print "Disconnected"
 
     '''
     '' On exit of listener
     '''
     def on_exit(self, controller):
-        self.mayaConnection.close()
         print "Exited"
 
     '''
@@ -1153,12 +1200,10 @@ class PAListener(Leap.Listener):
                 elif currentNumFingers == 4:
                     targetQueue = self.get_spongebob(targetQueue)
 
-                # Send data to maya
-                #self.mayaConnection.send_target_queue(targetQueue)
-
-                update_IK_targets(targetQueue)
                 #print fingers
 
+                # Update the IK Targets
+                update_IK_targets(targetQueue)
 
     '''
     '' Prints Debug statements if debugging is enabled
@@ -1270,7 +1315,7 @@ class PAListener(Leap.Listener):
         palmPosition = palm['position']
         palmNormal = palm['normal']
         mappedTarget = {
-                'id': PALM_INDEX,
+                'id': CONFIG['PALM_INDEX'],
                 'normal': [palmNormal[0], palmNormal[1], palmNormal[2]],
                 'position': [
                     scaleFactor * palmPosition[0], 
@@ -1443,36 +1488,35 @@ class PAALMEditorWindow(object):
         self.layout = cmds.columnLayout(parent=self.window)
 
         # Reset button for clearing keyframes
-        # TODO: RESET THE KEYFRAME USING THE IKHANDLE PLUGIN RESET FUNCTION
         cmds.button(
             label='Reset', 
             parent=self.layout, 
-            command= 'print "Resetting Keyframes"')
+            command= pm.Callback(reset_time))
 
         # Calibrate Button
         cmds.button(
             label='Calibrate', 
             parent=self.layout, 
-            command='init_calibration()')
+            command=pm.Callback(init_calibration))
                
 
         # Start Tracking
         cmds.button(
             label='Start Tracking', 
             parent=self.layout, 
-            command='init_tracking()')
+            command=init_tracking)
 
         # Stop Tracking
         cmds.button(
             label='Pause Tracking', 
             parent=self.layout, 
-            command='toggle_tracking()')
+            command=pm.Callback(toggle_tracking))
 
                 # Stop Tracking
         cmds.button(
             label='Hand Demo', 
             parent=self.layout, 
-            command='init_demo('+ str(HAND_DEMO_TYPE) + ')')
+            command=pm.Callback(init_demo, HAND_DEMO_TYPE))
 
     '''
     '' Shows the editor window
@@ -1512,22 +1556,44 @@ class PAALMDropDownMenu(object):
         cmds.menuItem(
             label='Show Editor', 
             parent=dropDownMenu,
-            command='show_editor_window()')
+            command=pm.Callback(self.show_editor_window))
         cmds.menuItem(
             label='About',
             parent=dropDownMenu,
-            command='show_about_page()')
+            command=pm.Callback(self.show_about_page))
         #cmds.menuItem(divider=True)
         cmds.menuItem(
             label='Quit',
             parent=dropDownMenu,
-            command='quit()')
+            command=pm.Callback(self.quit))
 
     '''
     '' Returns true if this menu exists in Maya's top option menu
     '''
     def exists(self):
         return cmds.menu(self.name, query=True, exists=True)
+
+
+    ''' 
+    '' Shows the PAALM Editor Window 
+    '''
+    def show_editor_window(self):
+        PAALM_EDITOR_WINDOW.show()
+
+    '''
+    '' Show the About / PAALM Blog
+    '''
+    def show_about_page(self):
+        cmds.showHelp(PAALM_ABOUT_WEBSITE, absolute=True)
+
+    '''
+    '' Quit paalm tracking
+    '''
+    def quit(self):
+        stop_tracking()
+        print 'No Longer Tracking!'
+
+
     
 #######################################################
 ''' 
@@ -1535,26 +1601,6 @@ class PAALMDropDownMenu(object):
 ## GLOBALS UI FXNS ##########################################
 #############################################################
 '''
-
-''' 
-'' Shows the PAALM Editor Window 
-'''
-def show_editor_window():
-    PAALM_EDITOR_WINDOW.show()
-
-'''
-'' Show the About / PAALM Blog
-'''
-def show_about_page():
-    cmds.showHelp(PAALM_ABOUT_WEBSITE, absolute=True)
-
-'''
-'' Quit paalm tracking
-'''
-def quit():
-    stop_tracking()
-    print 'No Longer Tracking!'
-
 
 
 #######################################################
@@ -1567,7 +1613,7 @@ def quit():
 '''
 '' Initializes a leap listener and tracker for getting hand data
 '''
-def init_tracking():
+def init_tracking(self=None):
     # Stop tracking if we are currently
     stop_tracking()
     
@@ -1580,7 +1626,7 @@ def init_tracking():
 '''
 '' Temporarily pause hand tracking
 '''
-def toggle_tracking():
+def toggle_tracking(self=None):
     # Toggle sending palm data
     wasTracking = PAALM_LEAP_LISTENER.is_tracking()
     isTracking = not wasTracking
@@ -1593,7 +1639,7 @@ def toggle_tracking():
 '''
 '' Temporarily stop sending palm tracking datah
 '''
-def toggle_palm_tracking():
+def toggle_palm_tracking(self=None):
     # Toggle sending palm data
     wasTrackingPalm = PAALM_LEAP_LISTENER.is_tracking_palm_position()
     isTrackingPalm = not wasTrackingPalm
@@ -1607,7 +1653,7 @@ def toggle_palm_tracking():
 '''
 '' Terminates hand tracking
 '''
-def stop_tracking():
+def stop_tracking(self=None):
     # Remove the sample listener when done
     LEAP_CONTROLLER.remove_listener(PAALM_LEAP_LISTENER)
     print 'Removed Tracking Listener'
@@ -1617,9 +1663,24 @@ def stop_tracking():
 '' Calibrates hand tracking data based on finger lengths and
 '' a spread open palm
 '''
-def init_calibration():
+def init_calibration(self=None):
     print 'Hold your hand above the Leap Motion Controller with Open Palms'
     PAALM_LEAP_LISTENER.reset_calibration()
+
+'''
+'' Initializes a demo type for IK Targets
+'''
+def init_demo(demoType):
+    if (demoType == HAND_DEMO_TYPE):
+        IK_HAND_TEST()
+    elif (demoType == CHARACTER_DEMO_TYPE):
+        #IK_CHARACTER_TEST()
+        print 'Character Demo'
+    elif (demoType == OCTOPUS_DEMO_TYPE):
+        #IK_OCTO_TEST()
+        print 'Octopus Demo'
+
+
 
 
 
@@ -1710,15 +1771,9 @@ def uninitializePlugin(mObject):
     mPlugin = OpenMayaMPx.MFnPlugin(mObject)
     try:
         mPlugin.deregisterCommand(PAALM_COMMAND_NAME)
+        stop_tracking()
     except:
         sys.stderr.write('Failed to unregister command: ' + PAALM_COMMAND_NAME)
-
-
-
-
-
-
-
 
 
 ############################################################
@@ -1730,7 +1785,7 @@ def uninitializePlugin(mObject):
 ''' 
 '' Defines the Joint Structure for PAALM Hand Demo
 '''
-def IK_FINGER_TEST():
+def IK_HAND_TEST():
     global CONFIG, PAALM_FINGERS, PAALM_HANDS
 
     ##### THUMB FINGER ####
@@ -1896,38 +1951,6 @@ def IK_FINGER_TEST():
 
     ## Add right hand to list of hands
     PAALM_HANDS.append(rightHand)
-    
-    # Clear all set key frames for palm
-    palm.clear_keyframes(CONFIG['MAX_TIME'])
-    palm.set_keyframe(1)
-    
-    # Clear all set key frames for fingers
-    #reset_time()
-    for finger in PAALM_FINGERS:
-        #Set initial keyframes
-        #print 'settting key frame'
-        finger.clear_keyframes()
-        finger.set_keyframe(1)
 
-    # Increment key frame time
-    increment_time()
-
-
-
-#################################################
-##################### DEMO ######################
-#################################################
-
-def init_demo(demoType):
-    if (demoType == HAND_DEMO_TYPE):
-        IK_HAND_TEST()
-    elif (demoType == CHARACTER_DEMO_TYPE):
-        #IK_CHARACTER_TEST()
-        print 'Character Demo'
-    elif (demoType == OCTO_DEMO_TYPE):
-        #IK_OCTO_TEST()
-        print 'Octopus Demo'
-
-
-
-
+    # Reset all time and keyframes
+    reset_time()
