@@ -8,7 +8,7 @@
 '''
 
 # System Imports
-import sys, string, time
+import sys, string, time, ast
 import math as Math
 
 # Maya Imports
@@ -87,7 +87,7 @@ PAALM_FINGERS = []
 PAALM_HANDS = []
 
 ## Is Tracking Hands from command port ##
-IS_TRACKING = False
+IS_TRACKING = True
 
 ## Is Tracking Palm from command port ##
 IS_TRACKING_PALM_POSITION = True
@@ -827,7 +827,6 @@ def increment_current_time(timeIncrement=0):
         timeIncrement = get_time_increment()
     # Update the current time by the increment
     newTime = get_current_time() + timeIncrement
-    print "Incremented New Time" + str(newTime)
     set_current_time(newTime)
     
     # Check if we need to increase the max time buffer
@@ -899,6 +898,7 @@ def clear_keyframes():
 def update_IK_targets(targetQueue):
     # Don't Update targets if we aren't tracking
     if (not IS_TRACKING):
+        print 'NOT TRACKING'
         return
 
     #Right Hand
@@ -1114,13 +1114,13 @@ class PAALMEditorWindow(object):
 
         # Start Tracking
         cmds.button(
-            label='Toggle Tracking', 
+            label='Open Port', 
             parent=self.layout, 
-            command=toggle_tracking)
+            command=pm.Callback(init_tracking))
 
         # Stop Tracking
         cmds.button(
-            label='Pause Tracking', 
+            label='Toggle Tracking', 
             parent=self.layout, 
             command=pm.Callback(toggle_tracking))
 
@@ -1349,8 +1349,10 @@ class PAALM(OpenMayaMPx.MPxCommand):
     '' Execution of the Command 
     '''
     def doIt(self, args):
-        show_editor_window()
-        print 'PAALM Loaded'
+        # Convert our string to a dictionary
+        targetQueue = ast.literal_eval(args.asString(0))
+        # Now update targets using the dictionary
+        update_IK_targets(targetQueue)
 
 ''' 
 '' Creates an instance of our command 
@@ -1365,7 +1367,6 @@ def initializePlugin(mObject):
     mPlugin = OpenMayaMPx.MFnPlugin(mObject)
     try:
         mPlugin.registerCommand(PAALM_COMMAND_NAME, paalm_command_creator)
-        init_tracking()
     except:
         sys.stderr.write('Failed to register command: ' + PAALM_COMMAND_NAME)
 
