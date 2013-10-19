@@ -102,7 +102,7 @@ class PAListener(Leap.Listener):
     def on_init(self, controller):
         # Make a new Maya Connection on port 6001
         self.is_peforming_ccd = False
-        self.is_tracking = True
+        self.isTracking = True
         self.fingerData = []
         self.shouldCalibrate = True
         self.maxCalibrationFrames = 250
@@ -445,7 +445,7 @@ class PAListener(Leap.Listener):
     '''
     '' Sets whether we are tracking hands 
     '''
-    def set_track_palm_position(self, shouldTrack):
+    def set_is_tracking(self, shouldTrack):
         self.isTracking = shouldTrack
         if (self.isTracking):
             print('Tracking')
@@ -468,8 +468,10 @@ class PAALMEditorWindow(object):
     '' Creates the Editor Window 
     '''
     def __init__(self):
+        global PAALM_EDITOR_WINDOW_NAME
+        global PAALM_EDITOR_WINDOW
         # Create an editor window
-        self.name = 'PAALMEditor'
+        self.name = PAALM_EDITOR_WINDOW_NAME
         self.window = None
         self.layout = None
 
@@ -481,7 +483,6 @@ class PAALMEditorWindow(object):
         self.construct()
 
         # Store global reference for window
-        global PAALM_EDITOR_WINDOW
         PAALM_EDITOR_WINDOW = self
 
     '''
@@ -511,7 +512,7 @@ class PAALMEditorWindow(object):
         cmds.button(
             label='Reset', 
             parent=self.layout, 
-            command=partial(self.report, 'Resetting Keyframes'))
+            command= 'print "Resetting Keyframes"')
 
         # Calibrate Button
         cmds.button(
@@ -545,12 +546,6 @@ class PAALMEditorWindow(object):
             self.construct()
             cmds.showWindow(self.window)
 
-    '''
-    '' Callback function to print values when a button is pressed
-    '''
-    def report(self, buttonIndex,value):
-        print "%s" % (value)
-   
 
 ################################################################################
 ###  Custom Drop Down Menu for PAALM  ##########################################
@@ -562,8 +557,18 @@ class PAALMDropDownMenu(object):
     '' Initialize the PAALM DropDown Menu
     '''
     def __init__(self):
+        global PAALM_DROP_DOWN_MENU_NAME, PAALM_DROP_DOWN_MENU_LABEL
         gMainWindow = maya.mel.eval('$temp1=$gMainWindow')
-        dropDownMenu = cmds.menu(label='PAALM', parent=gMainWindow, tearOff=True)
+        self.name = PAALM_DROP_DOWN_MENU_NAME
+        # Delete the old window by name if it exists
+        if (self.exists()):
+            cmds.deleteUI(self.name)
+
+        dropDownMenu = cmds.menu(
+            PAALM_DROP_DOWN_MENU_NAME, 
+            label=PAALM_DROP_DOWN_MENU_LABEL, 
+            parent=gMainWindow, 
+            tearOff=True)
         cmds.menuItem(
             label='Show Editor', 
             parent=dropDownMenu,
@@ -577,6 +582,12 @@ class PAALMDropDownMenu(object):
             label='Quit',
             parent=dropDownMenu,
             command='quit()')
+
+    '''
+    '' Returns true if this menu exists in Maya's top option menu
+    '''
+    def exists(self):
+        return cmds.menu(self.name, query=True, exists=True)
     
 #######################################################
 ''' 
@@ -636,12 +647,12 @@ def init_tracking():
 def toggle_tracking():
     # Toggle sending palm data
     wasTracking = PAALM_LEAP_LISTENER.is_tracking()
-    isTracking = not wasSendingHandData
+    isTracking = not wasTracking
     PAALM_LEAP_LISTENER.set_is_tracking(isTracking)
-    isTracking = 'Tracking Started'
+    trackingMsg = 'Tracking Started'
     if (not isTracking): 
-        isTracking = 'Tracking Paused'
-    print isTracking
+        trackingMsg = 'Tracking Paused'
+    print trackingMsg
 
 '''
 '' Temporarily stop sending palm tracking datah
@@ -651,10 +662,10 @@ def toggle_palm_tracking():
     wasTrackingPalm = PAALM_LEAP_LISTENER.is_tracking_palm_position()
     isTrackingPalm = not wasTrackingPalm
     PAALM_LEAP_LISTENER.set_track_palm_position(isTrackingPalm)
-    isPalmTracking = 'Tracking Started'
+    trackingMsg = 'Tracking Started'
     if (not isTrackingPalm): 
-        isPalmTracking = 'Tracking Paused'
-    print isPalmTracking
+        trackingMsg = 'Tracking Paused'
+    print trackingMsg
 
 
 '''
@@ -691,8 +702,18 @@ PAALM_ABOUT_WEBSITE = 'http://projectpaalm.blogspot.com'
 ## Refers to MEL command that starts the PAALM Plugin ##
 PAALM_COMMAND_NAME = 'paalm'
 
+
+## Unique Name of the PAALM Editor Window in memory ##
+PAALM_EDITOR_WINDOW_NAME = 'PAALMEditor'
+
 ## Reference to the PAALM Editor Window ##
 PAALM_EDITOR_WINDOW = PAALMEditorWindow()
+
+## Unique name of the drop down menu in memory ##
+PAALM_DROP_DOWN_MENU_NAME = 'PAALMMENU'
+
+## Label of the drop down menu ##
+PAALM_DROP_DOWN_MENU_LABEL = 'PAALM'
 
 ## Reference to the PAALM Drop Down Menu ##
 PAALM_DROP_DOWN_MENU = PAALMDropDownMenu()
