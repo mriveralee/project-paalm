@@ -106,7 +106,7 @@ ACTIVE_DEMO_TYPE = HAND_DEMO_TYPE
 
 ## Maya Command Port ##
 MAYA_PORT = 6001
-MAYA_PORT_NAME = 'mayaPAALMPort'
+MAYA_PORT_NAME = ':6001'
 
 '''#############################################################
 '' ############## SOCKET COMMAND PORT FOR MAYA #################
@@ -123,6 +123,7 @@ def open_command_port():
             return
     #Otherwise open the port`
     pm.commandPort(name=MAYA_PORT_NAME)
+    print 'PAALM Port Opened!'
 
 def close_command_port():
     pm.commandPort(close=True, name=MAYA_PORT_NAME)
@@ -1113,9 +1114,9 @@ class PAALMEditorWindow(object):
 
         # Start Tracking
         cmds.button(
-            label='Start Tracking', 
+            label='Toggle Tracking', 
             parent=self.layout, 
-            command=init_tracking)
+            command=toggle_tracking)
 
         # Stop Tracking
         cmds.button(
@@ -1226,7 +1227,6 @@ class PAALMDropDownMenu(object):
 '''
 def init_tracking(self=None):
     # Stop tracking if we are currently
-    stop_tracking()
     open_command_port()
     
     # Add the listener to receive events from the controller
@@ -1327,14 +1327,6 @@ PAALM_DROP_DOWN_MENU_LABEL = 'PAALM'
 ## Reference to the PAALM Drop Down Menu ##
 PAALM_DROP_DOWN_MENU = PAALMDropDownMenu()
 
-## The Leap Controller Reference ##
-LEAP_CONTROLLER = Leap.Controller()
-
-## The PAALM Leap Listener Reference ##
-PAALM_LEAP_LISTENER = PAListener()
-
-## ##
-
 ##############################################################
 '''
 ##############################################################
@@ -1373,6 +1365,7 @@ def initializePlugin(mObject):
     mPlugin = OpenMayaMPx.MFnPlugin(mObject)
     try:
         mPlugin.registerCommand(PAALM_COMMAND_NAME, paalm_command_creator)
+        init_tracking()
     except:
         sys.stderr.write('Failed to register command: ' + PAALM_COMMAND_NAME)
 

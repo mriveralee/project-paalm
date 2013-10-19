@@ -14,32 +14,6 @@ import string, time, socket
 import math as Math
 
 #######################################################
-'''
-#############################################################
-## GLOBALS VARS  ############################################
-#############################################################
-'''
-## Author Information ##
-PAALM_AUTHOR = 'Michael Rivera'
-PAALM_AUTHOR_WEBSITE = 'http://mikeriv.com'
-PAALM_ABOUT_WEBSITE = 'http://projectpaalm.blogspot.com'
-
-
-## The Leap Controller Reference ##
-LEAP_CONTROLLER = Leap.Controller()
-
-## The PAALM Leap Listener Reference ##
-PAALM_LEAP_LISTENER = PAListener()
-
-## Config vars for the leap data ##
-CONFIG = {
-    'PALM_INDEX': 9999,
-}
-
-## Command Port for Maya ##
-MAYA_PORT = 6001
-
-
 
 '''############################################################
 ''##################### MAYA CONNECTION #######################
@@ -64,7 +38,7 @@ class MayaConnection():
     
     def __init__(self, PORT):
         self.mayaSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.mayaSocket.connect(('localhost', PORT))
+        self.mayaSocket.connect(('127.0.0.1', MAYA_PORT))
         self.port = PORT
 
     # Close the socket port
@@ -79,7 +53,7 @@ class MayaConnection():
 
     # Sends a target queue update to Maya to trigger a perform_ccd() action 
     def send_target_queue(self, targetQueue):
-        command = 'python(\"update_IK_targets(%s)\")\n' % targetQueue
+        command = 'python(\"maya.cmds.paalm(%s)\")\n' % targetQueue
         #command = "python(\"receive_tip_position_from_leap("+str(tpX)+","+str(tpY)+","+str(tpZ)+","+str(lengthRatio)+")\")\n"
         # print targetQueue
         self.mayaSocket.send(command)
@@ -159,7 +133,6 @@ class PAListener(Leap.Listener):
     '' Called on initilization of listener
     '''
     def on_init(self, controller):
-        self.isTracking = True
         self.fingerLengthData = []
         self.shouldCalibrate = True
         self.maxCalibrationFrames = 250
@@ -168,11 +141,18 @@ class PAListener(Leap.Listener):
         self.receiveFrame = True
         self.maxFrameSkipCount = 30
         self.frameSkipCount = self.maxFrameSkipCount
-        self.shouldSendPalmData = False
+
         self.showDebugLogs = False
+
+        # Tracking Considerations
+        self.isTracking = True
+        self.shouldSendPalmData = True
 
         # Initialize finger data
         self.init_fingers()
+
+        # Initialize Maya Socket 
+        self.mayaConnection = MayaConnection(MAYA_PORT)
 
         print "Initialized"
 
@@ -593,6 +573,36 @@ def init_demo(demoType):
     elif (demoType == OCTOPUS_DEMO_TYPE):
         #IK_OCTO_TEST()
         print 'Octopus Demo'
+
+'''
+#############################################################
+## GLOBALS VARS  ############################################
+#############################################################
+'''
+## Author Information ##
+PAALM_AUTHOR = 'Michael Rivera'
+PAALM_AUTHOR_WEBSITE = 'http://mikeriv.com'
+PAALM_ABOUT_WEBSITE = 'http://projectpaalm.blogspot.com'
+
+
+## The Leap Controller Reference ##
+LEAP_CONTROLLER = Leap.Controller()
+
+## The PAALM Leap Listener Reference ##
+PAALM_LEAP_LISTENER = PAListener()
+
+## Config vars for the leap data ##
+CONFIG = {
+    'PALM_INDEX': 9999,
+}
+
+## Defines if we use direction vectors from the Leap. ##
+## If false, we use raw positions ##
+USE_LEAP_DIRECTION = True
+
+## Command Port for Maya ##
+MAYA_PORT = 6001
+
 
 
 
