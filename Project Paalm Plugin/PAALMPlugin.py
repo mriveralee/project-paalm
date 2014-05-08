@@ -571,7 +571,7 @@ class Joint(object):
         return True
 
     #Set the rotation on this joint in Maya
-    def set_rotation(self):
+    def set_rotation(self, axis, angle):
         print 'unimplemented rot'
 
     #Adds an animation key frame to the joint at at it current attributes
@@ -797,6 +797,29 @@ class Palm(Joint):
     def get_rot(self):
         return self.rot
 
+
+    '''
+    '' Sets the rotation of the palm using the axis/angle format
+    '''
+    def set_rotation(self, axis, angle):
+            #Make a quaternion from the axis and the angle for maya
+            mAxis = dt.Vector(axis[0], axis[1], axis[2])
+
+            #Convert Angle to Degrees
+            mAngle =  (angle*DEG_TO_RAD)
+
+            #Apply magic number to the joint to prevent moving too sharply to the targetPoint
+            rotQuat = dt.Quaternion(mAngle, mAxis)
+
+            #Get current matrix - CURRENTLY DOES NOT INCORPORATE SCALE (cutting off values)
+            mat = self.get_composite_matrix()
+
+            #Apply Rotation to the matrix
+            mat.addRotationQuaternion(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w, space='object')   #object space
+            
+            #Set the composite matrix for the joint
+            self.set_composite_matrix(mat)
+
 #############################################################
 ############## ANIMATION TIME FUNCTIONALITY #################
 #############################################################
@@ -931,10 +954,16 @@ def update_IK_targets(targetQueue):
             if (not IS_TRACKING_PALM_POSITION):
                 # Don't track palm if we are supposed to
                 continue
-            palmNormal = target['normal']
-            # Update the target palm position
+            palmNormal = target['normal']            
+            # Update the palm rotation
             palmPosition = target['position']
             rightPalm.set_position(palmPosition)
+
+            # Update the palm rotation
+            palmAxis = target['axis']
+            palmAngle = target['angle']
+            rightPalm.set_rotation(palmAxis, palmAngle)
+            
             continue
         else:
             # Otherwise, update the position of the current position

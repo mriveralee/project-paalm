@@ -143,10 +143,12 @@ class PAListener(Leap.Listener):
         self.frameSkipCount = self.maxFrameSkipCount
 
         self.showDebugLogs = False
+        self.lastFrame = None
 
         # Tracking Considerations
         self.isTracking = True
         self.shouldSendPalmData = True
+        self.shouldSendPalmRotation = True
 
         # Initialize finger data
         self.init_fingers()
@@ -197,6 +199,7 @@ class PAListener(Leap.Listener):
     def on_frame(self, controller):
         # Do not send data if we aren't tracking
         if (not self.is_tracking()):
+            self.lastFrame = None
             return
         # Get the most recent frame and report some basic information
         frame = controller.frame()
@@ -210,8 +213,16 @@ class PAListener(Leap.Listener):
 
             palm = {
                 'position': hand.palm_position,
-                'normal': hand.palm_normal
+                'normal': hand.palm_normal,
             }
+
+            # Add rotation axis/angle if necessary
+            if (self.is_tracking_palm_rotation() and self.lastFrame is not None):
+                palm['axis'] = hand.rotation_axis(self.lastFrame)
+                palm['angle'] = hand.rotation_angle(self.lastFrame)
+
+            # Set last frame to be current
+            self.lastFrame = frame
 
             # Check if the hand has any fingers
             fingers = hand.fingers
@@ -376,14 +387,28 @@ class PAListener(Leap.Listener):
         scaleFactor = 0.06
         palmPosition = palm['position']
         palmNormal = palm['normal']
+        palmAxis = palm['axis']
+        palmAngle = palm['angle']
         mappedTarget = {
-                'id': CONFIG['PALM_INDEX'],
-                'normal': [palmNormal[0], palmNormal[1], palmNormal[2]],
-                'position': [
-                    scaleFactor * palmPosition[0], 
-                    scaleFactor * palmPosition[1], 
-                    scaleFactor * palmPosition[2]]
+            'id': CONFIG['PALM_INDEX'],
+            'normal': [
+                palmNormal[0], 
+                palmNormal[1], 
+                palmNormal[2]],
+            'position': [
+                scaleFactor * palmPosition[0], 
+                scaleFactor * palmPosition[1], 
+                scaleFactor * palmPosition[2]]
         }
+        # Add rotation axis & angle, if necessary
+        if (self.shouldSendPalmRotation):
+            mappedTarget['axis'] = [
+                palmAxis[0], 
+                palmAxis[1],
+                palmAxis[2]]
+            mappedTarget['angle'] = palmAngle
+
+        # Return the mapped target 
         return mappedTarget
 
     '''
@@ -479,6 +504,25 @@ class PAListener(Leap.Listener):
     def is_tracking_palm_position(self):
         return self.shouldSendPalmData
 
+
+    '''
+    '' Sets whether we should be sending palm data to Maya
+    '''
+    def set_track_palm_rotation(self, shouldSend):
+        self.shouldSendPalmRotation = shouldSend
+        if (self.shouldSendPalmRotation):
+            print('Sending Palm Rotation Data')
+        else:
+            print('Stopped Sending Palm Rotation Data')
+            
+
+    '''
+    '' Determines if this listener is sending palm data 
+    '''
+    def is_tracking_palm_rotation(self):
+        return self.shouldSendPalmRotation
+
+
     
     '''
     '' Sets whether we are tracking hands 
@@ -542,6 +586,19 @@ def toggle_palm_tracking(self=None):
     if (not isTrackingPalm): 
         trackingMsg = 'Tracking Paused'
     print trackingMsg
+'''
+'' Temporarily stop sending palm tracking datah
+'''
+def toggle_palm_rotation(self=None):
+    # Toggle sending palm data
+    wasTrackingPalm = PAALM_LEAP_LISTENER.is_tracking_palm_position()
+    isTrackingPalm = not wasTrackingPalm
+    PAALM_LEAP_LISTENER.set_track_palm_rotation(isTrackingPalm)
+    trackingMsg = 'Palm Rotation Tracking Started'
+    if (not isTrackingPalm): 
+        trackingMsg = 'Palm Rotation Tracking Paused'
+    print trackingMsg
+
 
 
 '''
@@ -623,8 +680,10 @@ def main():
             toggle_palm_tracking()
         elif (inputKey == ' '):
             toggle_tracking()
-        elif (inputKey == 'r'):
+        elif (inputKey == 'c'):
             init_calibration()
+        elif (inputKey == 'r'):
+            toggle_palm_rotation()
         elif (inputKey == 'q'):
             # Quit
             stop_tracking()
